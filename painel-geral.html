@@ -34,7 +34,7 @@
 <body>
 
     <div class="nav-sidebar">
-        <span class="sidebar-titulo">LDS Barber</span>
+        <span class="sidebar-titulo"></span>
         <a href="#" id="linkAgenda">📅 Agenda</a>
         <a href="#" id="linkCaixa">💰 Caixa Diário</a>
         <a href="#" id="linkVendas">Registrar Venda</a>
@@ -47,7 +47,12 @@
     <div class="main-content">
         <header>
             <h1>Painel de Agendamentos</h1>
-            <button onclick="fazerLogout()" style="background:#f74040; color:white; border:none; padding:8px; border-radius:4px; cursor:pointer;">Sair</button>
+            <div>
+                <button onclick="copiarLink()" style="background:#ff9000; color:#121214; border:none; padding:8px 12px; border-radius:4px; cursor:pointer; font-weight:bold; margin-right: 10px;">
+                    Link de Agendamento
+                </button>
+                <button onclick="fazerLogout()" style="background:#f74040; color:white; border:none; padding:8px; border-radius:4px; cursor:pointer;">Sair</button>
+            </div>
         </header>
 
         <div class="seletor-semana">
@@ -75,8 +80,9 @@
     <script>
         // 1. Persistência de ID e Links Dinâmicos
         const urlParams = new URLSearchParams(window.location.search);
-        let idLoja = urlParams.get('id') || localStorage.getItem("idLojaAtual");
-        if (idLoja) localStorage.setItem("idLojaAtual", idLoja);
+        let idLoja = urlParams.get('id') || localStorage.getItem("idLojaAtual") || "lds-baber";
+        localStorage.setItem("idLojaAtual", idLoja);
+        console.log("ID da Loja carregado:", idLoja);
 
         const links = {
             "linkAgenda": "painel-geral.html", "linkCaixa": "caixa.html",
@@ -89,10 +95,22 @@
         for (const [id, url] of Object.entries(links)) {
             const el = document.getElementById(id);
             if (el) {
-                el.href = `${url}?id=${idLoja || ''}`;
+                el.href = `${url}?id=${idLoja}`;
                 el.classList.remove('active');
                 if (url === paginaAtual) el.classList.add('active');
             }
+        }
+
+        // Função para copiar o link de agendamento (MODIFICAÇÃO)
+        function copiarLink() {
+            const link = `${window.location.origin}/agendar.html?id=${idLoja}`;
+            const tempInput = document.createElement("input");
+            tempInput.value = link;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand("copy");
+            document.body.removeChild(tempInput);
+            alert("Link de agendamento copiado com sucesso!");
         }
 
         // 2. Lógica da Agenda
@@ -127,8 +145,11 @@
         }
 
         function carregarAgendaDia(dataObj) {
-            if (!idLoja) return;
-            const dataFormatada = dataObj.toLocaleDateString('pt-BR');
+            const dia = String(dataObj.getDate()).padStart(2, '0');
+            const mes = String(dataObj.getMonth() + 1).padStart(2, '0');
+            const ano = dataObj.getFullYear();
+            const dataFormatada = `${dia}/${mes}/${ano}`;
+
             const tbody = document.getElementById("listaAgendamentos");
             tbody.innerHTML = "<tr><td colspan='5'>Carregando...</td></tr>";
 
@@ -142,9 +163,20 @@
                       tbody.innerHTML = "<tr><td colspan='5'>Nenhum agendamento neste dia.</td></tr>";
                       return;
                   }
-                  snap.forEach(doc => {
-                      const d = doc.data();
-                      tbody.innerHTML += `<tr><td>${d.cliente}</td><td>${d.horario}</td><td>${d.servico}</td><td>R$ ${d.valor}</td><td><span class="status-badge">${d.status}</span></td></tr>`;
+                  
+                  const agendamentos = [];
+                  snap.forEach(doc => agendamentos.push(doc.data()));
+                  agendamentos.sort((a, b) => a.horario.localeCompare(b.horario));
+
+                  agendamentos.forEach(d => {
+                      tbody.innerHTML += `
+                        <tr>
+                            <td>${d.cliente}</td>
+                            <td>${d.horario}</td>
+                            <td>${d.servico}</td>
+                            <td>R$ ${parseFloat(d.valor || 0).toFixed(2)}</td>
+                            <td><span class="status-badge">${d.status}</span></td>
+                        </tr>`;
                   });
               });
         }
