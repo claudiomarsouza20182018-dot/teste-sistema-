@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registrar Venda - LDS Barber</title>
+
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #121214; color: #e1e1e6; margin: 0; padding: 0; display: flex; min-height: 100vh; }
+        .nav-sidebar { width: 170px; background-color: #202024; border-right: 1px solid #323238; display: flex; flex-direction: column; padding: 20px 10px; position: fixed; height: 100vh; box-sizing: border-box; }
+        .sidebar-titulo { color: #a8a8a8; font-size: 12px; font-weight: bold; padding-left: 10px; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 1px; }
+        .nav-sidebar a { color: #ff9000; text-decoration: none; font-weight: bold; font-size: 12px; padding: 12px 10px; margin-bottom: 8px; border-radius: 5px; transition: background 0.2s; }
+        .nav-sidebar a:hover { background-color: #2d2d34; }
+        .nav-sidebar a.active { color: #fff; background-color: #ff9000; }
+        .main-content { flex: 1; margin-left: 170px; padding: 30px; }
+        .produto-item { background: #202024; padding: 15px; margin: 10px 0; border-radius: 8px; display: flex; align-items: center; gap: 10px; border: 1px solid #323238; }
+        input { width: 50px; padding: 8px; background: #121214; color: #fff; border: 1px solid #323238; border-radius: 4px; text-align: center; }
+        button { padding: 8px 12px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; transition: opacity 0.2s; }
+        button:hover { opacity: 0.8; }
+    </style>
+</head>
+<body>
+
+    <div class="nav-sidebar">
+        <span class="sidebar-titulo">LDS Barber</span>
+        <a href="#" id="linkAgenda">📅 Agenda</a>
+        <a href="#" id="linkCaixa">💰 Caixa Diário</a>
+        <a href="#" id="linkVendas" class="active">Registrar Venda</a>
+        <a href="#" id="linkEstoque">Ver Estoque</a>
+        <a href="#" id="linkCadastro">Cadastrar/Entrada</a>
+        <a href="#" id="linkFaturamento">Faturamento</a>
+        <a href="#" id="linkConfig">⚙️ Configurações</a>
+    </div>
+
+    <div class="main-content">
+        <h1>Registrar Nova Venda</h1>
+        <div id="listaProdutos">
+            <p style="color: #a8a8a8;">Carregando produtos...</p>
+        </div>
+    </div>
+
+    <script src="firebase-init.js"></script>
+    <script src="config-global.js"></script>
+    <script src="auth-controle.js"></script>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        let idLoja = urlParams.get('id') || localStorage.getItem("idLojaAtual");
+        
+        if (!idLoja) {
+            window.location.href = "index.html";
+        } else {
+            localStorage.setItem("idLojaAtual", idLoja);
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const container = document.getElementById("listaProdutos");
+            
+            window.db.collection("estoque")
+                .where("estabelecimentoId", "==", idLoja)
+                .onSnapshot((snapshot) => {
+                    container.innerHTML = "";
+                    if(snapshot.empty) { 
+                        container.innerHTML = `<p>Nenhum produto encontrado.</p>`; 
+                        return; 
+                    }
+
+                    snapshot.forEach((doc) => {
+                        const prod = doc.data();
+                        const div = document.createElement("div");
+                        div.className = "produto-item";
+                        div.innerHTML = `
+                            <div style="flex-grow: 1;">
+                                <strong>${prod.nome || 'Sem nome'}</strong><br>
+                                <span style="color: #ff9000;">R$ ${prod.preco || '0.00'}</span> 
+                                <small style="color: #666;">(Estoque: ${prod.quantidade || 0})</small>
+                            </div>
+                            <input type="number" id="qtd_${doc.id}" value="1" min="1">
+                            <button onclick="vender('${doc.id}', '${prod.nome}', ${prod.preco}, 'Pix')" style="background: #008080; color: #fff;">Pix</button>
+                            <button onclick="vender('${doc.id}', '${prod.nome}', ${prod.preco}, 'Dinheiro')" style="background: #28a745; color: #fff;">Dinheiro</button>
+                            <button onclick="vender('${doc.id}', '${prod.nome}', ${prod.preco}, 'Cartão')" style="background: #007bff; color: #fff;">Cartão</button>
+                        `;
+                        container.appendChild(div);
+                    });
+                });
+        });
+
+        // Função de venda com Transação para garantir desconto no estoque
+        function vender(produtoId, nome, preco, forma) {
+            const qtdInput = document.getElementById(`qtd_${produtoId}`);
+            const qtdVendida = parseInt(qtdInput.value);
+            
+            if (qtdVendida <= 0) {
+                alert("Quantidade inválida!");
+                return;
+            }
+
+            const total = preco * qtdVendida;
+            const produtoRef = window.db.collection("estoque").doc(produtoId);
+            const vendaRef = window.db.collection("historico_vendas").doc();
+
+            window.db.runTransaction((transaction) => {
+                return transaction.get(produtoRef).then((doc) => {
+                    if (!doc.exists) throw "Produto não encontrado!";
+
+                    const estoqueAtual = doc.data().quantidade || 0;
+                    if (estoqueAtual < qtdVendida) throw "Estoque insuficiente!";
+
+                    // Desconta do estoque
+                    transaction.update(produtoRef, { quantidade: estoqueAtual - qtdVendida });
+
+                    // Registra a venda
+                    transaction.set(vendaRef, {
+                        produtoId: produtoId,
+                        nomeProduto: nome,
+                        quantidade: qtdVendida,
+                        valorTotal: total,
+                        formaPagamento: forma,
+                        estabelecimentoId: idLoja,
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                });
+            })
+            .then(() => alert(`Venda de ${nome} realizada com sucesso!`))
+            .catch(err => {
+                console.error("Erro:", err);
+                alert("Erro ao processar venda: " + err);
+            });
+        }
+
+        const links = { "linkAgenda": "painel-geral.html", "linkCaixa": "caixa.html", "linkVendas": "vendas.html", "linkEstoque": "estoque.html", "linkCadastro": "cadastro.html", "linkFaturamento": "faturamento.html", "linkConfig": "configuracoes.html" };
+        for (const [id, url] of Object.entries(links)) {
+            const el = document.getElementById(id);
+            if (el) el.href = `${url}?id=${idLoja}`;
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadastrar Produto - Lds Barber</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #121214; color: #e1e1e6; margin: 0; padding: 0; display: flex; min-height: 100vh; }
+        .nav-sidebar { width: 170px; background-color: #202024; border-right: 1px solid #323238; display: flex; flex-direction: column; padding: 20px 10px; position: fixed; height: 100vh; box-sizing: border-box; }
+        .sidebar-titulo { color: #a8a8a8; font-size: 12px; font-weight: bold; padding-left: 10px; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 1px; }
+        .nav-sidebar a { color: #ff9000; text-decoration: none; font-weight: bold; font-size: 12px; padding: 12px 10px; margin-bottom: 8px; border-radius: 5px; transition: background 0.2s; }
+        .nav-sidebar a:hover { background-color: #2d2d34; }
+        .nav-sidebar a.active { color: #fff; background-color: #ff9000; }
+        .main-content { flex: 1; margin-left: 170px; padding: 30px; max-width: 700px; }
+        .secao-cadastro { background: #202024; padding: 20px; border-radius: 8px; border: 1px solid #323238; }
+        .campo-form { display: flex; flex-direction: column; margin-bottom: 15px; }
+        input, select { padding: 10px; border-radius: 5px; background: #121214; color: #fff; border: 1px solid #323238; }
+        .btn-acao { background: #00b37e; color: #fff; border: none; padding: 12px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        .btn-mini { background: #ff9000; color: #fff; border: none; padding: 8px; margin-left: 5px; border-radius: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="nav-sidebar">
+        <span class="sidebar-titulo">LDS Barber</span>
+        <a href="#" id="linkAgenda">📅 Agenda</a>
+        <a href="#" id="linkCaixa">💰 Caixa Diário</a>
+        <a href="#" id="linkVendas">Registrar Venda</a>
+        <a href="#" id="linkEstoque">Ver Estoque</a>
+        <a href="#" id="linkCadastro">Cadastrar/Entrada</a>
+        <a href="#" id="linkFaturamento">Faturamento</a>
+        <a href="#" id="linkConfig">⚙️ Configurações</a>
+    </div>
+
+    <div class="main-content">
+        <h1>➕ Cadastrar Novo Produto</h1>
+        <div class="secao-cadastro">
+            <form id="cadastroProdutoForm">
+                <div class="campo-form">
+                    <label>Nome do Produto:</label>
+                    <input type="text" id="nomeProduto" required>
+                </div>
+                
+                <div class="campo-form">
+                    <label>Categoria:</label>
+                    <div style="display: flex;">
+                        <input type="text" id="novaCategoria" placeholder="Nova categoria..." style="flex: 1;">
+                        <button type="button" class="btn-mini" onclick="adicionarCategoria()">+</button>
+                    </div>
+                    <select id="categoriaProduto" required style="margin-top: 10px;">
+                        <option value="">Selecione uma categoria...</option>
+                    </select>
+                </div>
+
+                <div class="campo-form">
+                    <label>Quantidade:</label>
+                    <input type="number" id="qtdProduto" required min="0">
+                </div>
+                <div class="campo-form">
+                    <label>Preço de Custo (R$):</label>
+                    <input type="number" id="precoCusto" step="0.01" required min="0">
+                </div>
+                <div class="campo-form">
+                    <label>Preço de Venda (R$):</label>
+                    <input type="number" id="precoVenda" step="0.01" required min="0">
+                </div>
+                <button type="submit" class="btn-acao">💾 Salvar no Estoque</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="firebase-init.js"></script>
+    <script src="config-global.js"></script>
+    <script src="auth-controle.js"></script>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        let idLoja = urlParams.get('id') || localStorage.getItem("idLojaAtual");
+        if (idLoja) localStorage.setItem("idLojaAtual", idLoja);
+
+        const links = {
+            "linkAgenda": "painel-geral.html", "linkCaixa": "caixa.html", 
+            "linkVendas": "vendas.html", "linkEstoque": "estoque.html",
+            "linkCadastro": "cadastro.html", "linkFaturamento": "faturamento.html", 
+            "linkConfig": "configuracoes.html"
+        };
+
+        const paginaAtual = window.location.pathname.split("/").pop();
+        for (const [id, url] of Object.entries(links)) {
+            const el = document.getElementById(id);
+            if (el) {
+                el.href = `${url}?id=${idLoja || ''}`;
+                el.classList.remove('active');
+                if (url === paginaAtual) el.classList.add('active');
+            }
+        }
+
+        async function adicionarCategoria() {
+            const inputCat = document.getElementById("novaCategoria");
+            const nome = inputCat.value.trim();
+            if (!nome) return alert("Digite o nome da categoria");
+            
+            try {
+                await window.db.collection("categorias").add({
+                    nome: nome,
+                    estabelecimentoId: idLoja
+                });
+                inputCat.value = "";
+                alert("Categoria criada!");
+            } catch (e) {
+                alert("Erro ao criar: " + e.message);
+            }
+        }
+
+        window.onload = async () => {
+            window.db.collection("categorias")
+                .where("estabelecimentoId", "==", idLoja)
+                .onSnapshot(snap => {
+                    const select = document.getElementById("categoriaProduto");
+                    select.innerHTML = '<option value="">Selecione...</option>';
+                    snap.forEach(doc => {
+                        select.innerHTML += `<option value="${doc.data().nome}">${doc.data().nome}</option>`;
+                    });
+                });
+        };
+
+        document.getElementById("cadastroProdutoForm").onsubmit = (e) => {
+            e.preventDefault();
+            // Agora salvando na coleção correta "estoque" para sincronizar com estoque.js
+            window.db.collection("estoque").add({
+                nome: document.getElementById("nomeProduto").value,
+                categoria: document.getElementById("categoriaProduto").value,
+                quantidade: parseInt(document.getElementById("qtdProduto").value),
+                custo: parseFloat(document.getElementById("precoCusto").value),
+                preco: parseFloat(document.getElementById("precoVenda").value),
+                estabelecimentoId: idLoja,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            }).then(() => {
+                alert("Salvo com sucesso!");
+                document.getElementById("cadastroProdutoForm").reset();
+            }).catch(err => {
+                console.error("Erro ao salvar:", err);
+                alert("Erro ao salvar: " + err.message);
+            });
+        };
+    </script>
+</body>
+</html>

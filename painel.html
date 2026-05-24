@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Controle - Lds Barber & Tattoo</title>
+
+    <style>
+        /* ... seu CSS ... */
+    </style>
+</head>
+<body>
+
+<div class="header-painel">
+    <div>
+        <h1>Lds Barber & Tattoo - Controle de Agenda</h1>
+    </div>
+    <input type="date" id="filtroDataPainel" class="filtro-data">
+</div>
+
+<div class="nav-sidebar">
+    <a href="painel-geral.html" id="linkAgenda">📅 Agenda</a>
+    <a href="caixa.html" id="linkCaixa">💰 Caixa Diário</a>
+    <a href="vendas.html" id="linkVendas">Registrar Venda</a>
+    <a href="estoque.html" id="linkEstoque">Ver Estoque</a>
+    <a href="faturamento.html" id="linkFaturamento">Faturamento</a>
+    <a href="configuracoes.html" id="linkConfig">⚙️ Configurações</a>
+</div>
+
+<div class="container-painel" id="listaAgendamentosPainel">
+    <p class="sem-agenda">Carregando...</p>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+
+<script src="firebase-init.js"></script>
+<script src="config-global.js"></script>
+<script src="auth-controle.js"></script>
+
+<script>
+    // Pega o ID da URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const idComercioLogado = urlParams.get("id");
+
+    // Ajusta os links do menu automaticamente
+    function ajustarMenu() {
+        document.querySelectorAll('.nav-sidebar a').forEach(a => {
+            if (idComercioLogado) {
+                const baseHref = a.getAttribute('href').split('?')[0];
+                a.href = `${baseHref}?id=${idComercioLogado}`;
+            }
+        });
+    }
+
+    window.onload = function() {
+        ajustarMenu();
+        if (idComercioLogado) {
+            escutarAgendamentosDoDia(hojeStr);
+            // carregarNomeMenu(); // Certifique-se que esta função existe no config-global
+        } else {
+            console.error("ID da loja não encontrado na URL");
+        }
+    };
+
+    // ... (restante das suas funções: escutarAgendamentosDoDia, cancelarAgendamento, etc.) ...
+</script>
+</body>
+</html>
