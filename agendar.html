@@ -1,1 +1,168 @@
 
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="tituloAba">Agendamento Online</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #121214; color: #e1e1e6; padding: 20px; display: flex; justify-content: center; }
+        .container-agendamento { width: 100%; max-width: 450px; background: #202024; padding: 25px; border-radius: 8px; border: 1px solid #323238; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+        h2 { text-align: center; color: #fff; margin-bottom: 5px; font-size: 22px; }
+        p.sub { text-align: center; color: #a8a8a8; font-size: 14px; margin-bottom: 25px; }
+        .form-group { margin-bottom: 18px; }
+        label { display: block; margin-bottom: 8px; color: #e1e1e6; font-size: 14px; font-weight: bold; }
+        input[type="text"], input[type="tel"], input[type="date"], select { width: 100%; padding: 12px; background: #121214; border: 1px solid #323238; border-radius: 6px; color: #fff; font-size: 16px; outline: none; }
+        input:focus, select:focus { border-color: #ff9000; }
+        .grade-horarios { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
+        .btn-horario { background: #29292e; color: #fff; border: 1px solid #323238; padding: 12px 5px; border-radius: 6px; font-weight: bold; font-size: 15px; cursor: pointer; text-align: center; transition: 0.2s; }
+        .btn-horario:hover { border-color: #ff9000; }
+        .btn-horario.selecionado { background: #ff9000; color: #121214; border-color: #ff9000; }
+        .btn-confirmar { width: 100%; background: #00b37e; color: #fff; border: none; padding: 15px; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 25px; transition: background 0.2s; }
+        .btn-confirmar:hover { background: #00875f; }
+        .aviso-vazio { grid-column: span 3; text-align: center; color: #f75a68; font-size: 14px; padding: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="container-agendamento">
+    <h2 id="nomeEstabelecimento">Carregando barbearia...</h2>
+    <p class="sub">Reserve seu horário em menos de 1 minuto</p>
+
+    <form id="formAgendamento">
+        <div class="form-group">
+            <label for="nomeCliente">Seu Nome</label>
+            <input type="text" id="nomeCliente" placeholder="Ex: Felipe Silva" required>
+        </div>
+        <div class="form-group">
+            <label for="whatsappCliente">WhatsApp / Celular</label>
+            <input type="tel" id="whatsappCliente" placeholder="(42) 99999-0000" required>
+        </div>
+        <div class="form-group">
+            <label for="servicoSelecionado">Escolha o Serviço</label>
+            <select id="servicoSelecionado" required>
+                <option value="Corte Masculino" data-preco="35">Corte Masculino - R$ 35,00</option>
+                <option value="Barba Completa" data-preco="25">Barba Completa - R$ 25,00</option>
+                <option value="Combo Cabelo e Barba" data-preco="50">Combo Cabelo + Barba - R$ 50,00</option>
+                <option value="Tatuagem (Avaliação/Sessão)" data-preco="0">Tatuagem / Orçamento</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="dataAgendamento">Escolha o Dia</label>
+            <input type="date" id="dataAgendamento" required>
+        </div>
+        <div class="form-group">
+            <label>Horários Disponíveis</label>
+            <div class="grade-horarios" id="containerHorarios">
+                <p class="aviso-vazio">Selecione uma data acima para ver os horários.</p>
+            </div>
+        </div>
+        <button type="submit" class="btn-confirmar">Confirmar Agendamento</button>
+    </form>
+</div>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyC3KQOyLglnEBlENTDmtXboODO-e984Sps",
+        authDomain: "lds-baber.firebaseapp.com",
+        projectId: "lds-baber",
+        storageBucket: "lds-baber.firebasestorage.app",
+        messagingSenderId: "214203799710",
+        appId: "1:214203799710:web:12e68a9772495a7c18838f",
+        measurementId: "G-Y0HMXH2XTL"
+    };
+
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    const urlParams = new URLSearchParams(window.location.search);
+    // ID definido para buscar o registro "claudiomar-alves" no banco de dados
+    let estabelecimentoId = urlParams.get('id') || "claudiomar-alves";
+
+    // Busca Nome - Depuração
+    console.log("Iniciando busca para o ID:", estabelecimentoId);
+
+    db.collection("usuarios")
+      .where("estabelecimentoId", "==", estabelecimentoId)
+      .get()
+      .then((snap) => {
+          console.log("Busca concluída. Documentos encontrados:", snap.size);
+          if (!snap.empty) {
+              snap.forEach(doc => {
+                  console.log("Dados do documento:", doc.data());
+                  const nome = doc.data().nomeBarbearia || "Barbearia";
+                  document.getElementById("nomeEstabelecimento").innerText = nome;
+              });
+          } else {
+              console.warn("Nenhum documento encontrado na coleção 'usuarios' com o ID:", estabelecimentoId);
+              document.getElementById("nomeEstabelecimento").innerText = "Barbearia não encontrada";
+          }
+      })
+      .catch((err) => {
+          console.error("Erro ao buscar no Firestore:", err);
+      });
+
+    const listaHorariosPadrao = ["09:00", "10:00", "11:00", "13:30", "14:30", "15:30", "16:30", "17:30", "18:30"];
+    let horarioSelecionadoGlobal = null;
+    const inputData = document.getElementById("dataAgendamento");
+    inputData.min = new Date().toISOString().split("T")[0];
+
+    inputData.addEventListener("change", function() {
+        const [ano, mes, dia] = this.value.split("-");
+        const dataFormatadaBusca = `${dia.padStart(2, '0')}/${mes.padStart(2, '0')}/${ano}`;
+        
+        db.collection("agenda_clientes")
+          .where("estabelecimentoId", "==", estabelecimentoId)
+          .where("dataFormatada", "==", dataFormatadaBusca)
+          .where("status", "==", "Aguardando")
+          .get().then(snap => {
+            let ocupados = [];
+            snap.forEach(doc => ocupados.push(doc.data().horario));
+            
+            const container = document.getElementById("containerHorarios");
+            container.innerHTML = "";
+            listaHorariosPadrao.forEach(hr => {
+                if (ocupados.includes(hr)) return;
+                const b = document.createElement("div");
+                b.className = "btn-horario";
+                b.innerText = hr;
+                b.onclick = () => {
+                    document.querySelectorAll(".btn-horario").forEach(i => i.classList.remove("selecionado"));
+                    b.classList.add("selecionado");
+                    horarioSelecionadoGlobal = hr;
+                };
+                container.appendChild(b);
+            });
+        });
+    });
+
+    document.getElementById("formAgendamento").addEventListener("submit", function(e) {
+        e.preventDefault();
+        if (!horarioSelecionadoGlobal) return alert("Selecione um horário!");
+        
+        const dataAgendada = document.getElementById("dataAgendamento").value;
+        const [ano, mes, dia] = dataAgendada.split("-");
+        const dataFinalFormatada = `${dia.padStart(2, '0')}/${mes.padStart(2, '0')}/${ano}`;
+
+        db.collection("agenda_clientes").add({
+            estabelecimentoId: estabelecimentoId,
+            cliente: document.getElementById("nomeCliente").value.trim(),
+            whatsapp: document.getElementById("whatsappCliente").value.trim(),
+            servico: document.getElementById("servicoSelecionado").value,
+            valor: parseFloat(document.getElementById("servicoSelecionado").options[document.getElementById("servicoSelecionado").selectedIndex].getAttribute("data-preco")),
+            horario: horarioSelecionadoGlobal,
+            status: "Aguardando",
+            dataFormatada: dataFinalFormatada,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        }).then(() => {
+            alert("Agendamento realizado com sucesso!");
+            location.reload();
+        });
+    });
+</script>
+</body>
+</html>
