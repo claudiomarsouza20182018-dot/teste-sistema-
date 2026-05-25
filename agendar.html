@@ -11,7 +11,7 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: #121214; color: #e1e1e6; padding: 20px; display: flex; justify-content: center; }
-        .container-agendamento { width: 100%; max-width: 450px; background: #202024; padding: 25px; border-radius: 8px; border: 1px solid #323238; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+        .container-agendamento { width: 100%; max-width: 450px; background: #202024; padding: 25px; border-radius: 8px; border: 1px solid #323238; box-shadow: 0 4px 10px rgba(0,0,0,0.3); margin-bottom: 20px; }
         h2 { text-align: center; color: #fff; margin-bottom: 5px; font-size: 22px; }
         p.sub { text-align: center; color: #a8a8a8; font-size: 14px; margin-bottom: 25px; }
         .form-group { margin-bottom: 18px; }
@@ -29,43 +29,51 @@
 </head>
 <body>
 
-<div class="container-agendamento">
-    <h2 id="nomeEstabelecimento">Carregando...</h2>
-    <p class="sub">Reserve seu horário</p>
+<div style="width: 100%; max-width: 450px;">
+    <div class="container-agendamento">
+        <h2 id="nomeEstabelecimento">Carregando...</h2>
+        <p class="sub">Reserve seu horário</p>
 
-    <form id="formAgendamento">
-        <div class="form-group">
-            <label for="nomeCliente">Seu Nome</label>
-            <input type="text" id="nomeCliente" required>
-        </div>
-        <div class="form-group">
-            <label for="whatsappCliente">WhatsApp</label>
-            <input type="tel" id="whatsappCliente" required>
-        </div>
-        <div class="form-group">
-            <label for="profissionalSelecionado">Escolha o Profissional</label>
-            <select id="profissionalSelecionado" required>
-                <option value="">Carregando...</option>
-            </select>
-        </div>
-        <div class="form-group">
-            <label for="servicoSelecionado">Escolha o Serviço</label>
-            <select id="servicoSelecionado" required>
-                <option value="">Carregando...</option>
-            </select>
-        </div>
-        <div class="form-group">
-            <label for="dataAgendamento">Escolha o Dia</label>
-            <input type="date" id="dataAgendamento" required>
-        </div>
-        <div class="form-group">
-            <label>Horários Disponíveis</label>
-            <div class="grade-horarios" id="containerHorarios">
-                <p class="aviso-vazio">Selecione o Profissional, o Serviço e a Data.</p>
+        <form id="formAgendamento">
+            <div class="form-group">
+                <label for="nomeCliente">Seu Nome</label>
+                <input type="text" id="nomeCliente" required>
             </div>
+            <div class="form-group">
+                <label for="whatsappCliente">WhatsApp</label>
+                <input type="tel" id="whatsappCliente" required>
+            </div>
+            <div class="form-group">
+                <label for="profissionalSelecionado">Escolha o Profissional</label>
+                <select id="profissionalSelecionado" required><option value="">Carregando...</option></select>
+            </div>
+            <div class="form-group">
+                <label for="servicoSelecionado">Escolha o Serviço</label>
+                <select id="servicoSelecionado" required><option value="">Carregando...</option></select>
+            </div>
+            <div class="form-group">
+                <label for="dataAgendamento">Escolha o Dia</label>
+                <input type="date" id="dataAgendamento" required>
+            </div>
+            <div class="form-group">
+                <label>Horários Disponíveis</label>
+                <div class="grade-horarios" id="containerHorarios">
+                    <p class="aviso-vazio">Selecione o Profissional, o Serviço e a Data.</p>
+                </div>
+            </div>
+            <button type="submit" class="btn-confirmar">Confirmar Agendamento</button>
+        </form>
+    </div>
+
+    <div class="container-agendamento">
+        <h2>Meus Agendamentos</h2>
+        <div class="form-group">
+            <label for="buscarWhatsapp">Verificar agendamentos (WhatsApp):</label>
+            <input type="tel" id="buscarWhatsapp" placeholder="(00) 00000-0000">
+            <button id="btnBuscar" class="btn-confirmar" style="background: #323238; margin-top: 10px;">Buscar Agendamentos</button>
         </div>
-        <button type="submit" class="btn-confirmar">Confirmar Agendamento</button>
-    </form>
+        <div id="resultadoBusca" style="color: #fff;"></div>
+    </div>
 </div>
 
 <script>
@@ -74,6 +82,7 @@
     let estabelecimentoId = urlParams.get('id') || "claudiomar-alves";
     let horarioSelecionadoGlobal = null;
 
+    // --- Carregamento Inicial ---
     db.collection("usuarios").where("estabelecimentoId", "==", estabelecimentoId).get().then(snap => {
         if (!snap.empty) document.getElementById("nomeEstabelecimento").innerText = snap.docs[0].data().nomeBarbearia;
     });
@@ -95,9 +104,9 @@
         });
     });
 
-    const inputData = document.getElementById("dataAgendamento");
-    inputData.min = new Date().toISOString().split("T")[0];
+    document.getElementById("dataAgendamento").min = new Date().toISOString().split("T")[0];
 
+    // --- Função de Lógica de Horários ---
     function carregarHorarios() {
         const prof = document.getElementById("profissionalSelecionado").value;
         const data = document.getElementById("dataAgendamento").value;
@@ -105,10 +114,7 @@
         const duracaoNova = parseInt(servicoEl.options[servicoEl.selectedIndex]?.getAttribute("data-tempo") || 0);
         const container = document.getElementById("containerHorarios");
 
-        if (!prof || !data || !duracaoNova) {
-            container.innerHTML = '<p class="aviso-vazio">Selecione Profissional, Serviço e Data.</p>';
-            return;
-        }
+        if (!prof || !data || !duracaoNova) return;
 
         container.innerHTML = "Carregando...";
         horarioSelecionadoGlobal = null;
@@ -130,16 +136,10 @@
             });
 
             container.innerHTML = "";
-
-            // O sistema agora testa a cada 5 minutos (min += 5) para capturar qualquer espaço livre
             for (let min = (9 * 60); min < (19 * 60); min += 5) {
                 let fimNovo = min + duracaoNova;
-                
-                // Verifica se o serviço termina dentro do horário de funcionamento (até as 19h)
                 if (fimNovo > (19 * 60)) break;
-
                 let temConflito = intervalosOcupados.some(ag => (min < ag.fim && fimNovo > ag.inicio));
-                
                 if (temConflito) continue;
 
                 let h = Math.floor(min / 60);
@@ -156,26 +156,25 @@
                 };
                 container.appendChild(b);
             }
-            
-            if (container.innerHTML === "") {
-                container.innerHTML = '<p class="aviso-vazio">Nenhum horário disponível para esta duração.</p>';
-            }
+            if (container.innerHTML === "") container.innerHTML = '<p class="aviso-vazio">Sem horários disponíveis.</p>';
         });
     }
 
+    // --- Listeners ---
     document.getElementById("dataAgendamento").addEventListener("change", carregarHorarios);
     document.getElementById("servicoSelecionado").addEventListener("change", carregarHorarios);
     document.getElementById("profissionalSelecionado").addEventListener("change", carregarHorarios);
 
+    // --- Envio de Agendamento ---
     document.getElementById("formAgendamento").addEventListener("submit", function(e) {
         e.preventDefault();
-        if (!horarioSelecionadoGlobal) return alert("Por favor, selecione um horário disponível.");
+        if (!horarioSelecionadoGlobal) return alert("Por favor, selecione um horário.");
         
         const selS = document.getElementById("servicoSelecionado");
         db.collection("agenda_clientes").add({
             estabelecimentoId: estabelecimentoId,
             cliente: document.getElementById("nomeCliente").value,
-            whatsapp: document.getElementById("whatsappCliente").value,
+            whatsapp: document.getElementById("whatsappCliente").value.replace(/\D/g, ''),
             profissional: document.getElementById("profissionalSelecionado").value,
             servico: selS.value,
             duracaoMinutos: parseInt(selS.options[selS.selectedIndex].getAttribute("data-tempo")),
@@ -183,11 +182,35 @@
             dataFormatada: document.getElementById("dataAgendamento").value.split("-").reverse().join("/"),
             status: "Aguardando",
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        }).then(() => { 
-            alert("Agendamento realizado!"); 
-            location.reload(); 
+        }).then(() => { alert("Agendado com sucesso!"); location.reload(); });
+    });
+
+    // --- Busca e Cancelamento ---
+    document.getElementById("btnBuscar").addEventListener("click", function() {
+        const wpp = document.getElementById("buscarWhatsapp").value.replace(/\D/g, '');
+        const resDiv = document.getElementById("resultadoBusca");
+        if (!wpp) return alert("Digite o WhatsApp.");
+        
+        db.collection("agenda_clientes").where("whatsapp", "==", wpp).orderBy("timestamp", "desc").get().then(snap => {
+            resDiv.innerHTML = "";
+            if (snap.empty) return resDiv.innerHTML = "Nenhum agendamento encontrado.";
+
+            snap.forEach(doc => {
+                const ag = doc.data();
+                const card = document.createElement("div");
+                card.style = "background: #29292e; padding: 15px; border-radius: 8px; margin-bottom: 10px;";
+                card.innerHTML = `<p><b>${ag.servico}</b> - ${ag.dataFormatada} às ${ag.horario}</p>
+                                  <button onclick="cancelar('${doc.id}')" style="background:#f75a68; color:white; border:none; padding:8px; width:100%; border-radius:4px; cursor:pointer;">Cancelar</button>`;
+                resDiv.appendChild(card);
+            });
         });
     });
+
+    function cancelar(id) {
+        if (confirm("Confirmar cancelamento?")) {
+            db.collection("agenda_clientes").doc(id).delete().then(() => { alert("Cancelado!"); location.reload(); });
+        }
+    }
 </script>
 </body>
 </html>
