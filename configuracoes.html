@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -17,15 +16,15 @@
         .nav-sidebar a:hover { background-color: #2d2d34; }
         .nav-sidebar a.active { color: #fff; background-color: #ff9000; }
         .main-content { flex: 1; margin-left: 170px; padding: 30px; }
-        .tabela-estoque { width: 100%; border-collapse: collapse; background: #202024; border: 1px solid #323238; }
-        .tabela-estoque th { background-color: #29292e; color: #ff9000; padding: 12px; text-align: left; }
-        .tabela-estoque td { padding: 12px; border-bottom: 1px solid #29292e; }
+        .card-config { background: #202024; padding: 20px; border-radius: 8px; border: 1px solid #323238; margin-bottom: 20px; }
+        input { padding: 10px; border-radius: 4px; border: 1px solid #323238; background: #121214; color: #fff; margin-right: 10px; }
+        button { padding: 10px 15px; cursor: pointer; background: #ff9000; border: none; color: #121214; font-weight: bold; border-radius: 4px; }
+        .item-lista { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #323238; align-items: center; }
     </style>
 </head>
 <body>
 
     <div class="nav-sidebar">
-        <span class="sidebar-titulo"></span>
         <a href="#" id="linkAgenda">📅 Agenda</a>
         <a href="#" id="linkCaixa">💰 Caixa Diário</a>
         <a href="#" id="linkVendas">Registrar Venda</a>
@@ -37,12 +36,26 @@
 
     <div class="main-content">
         <h1>Configurações da Barbearia</h1>
-        <h3>Profissionais</h3>
-        <form id="formNovoProfissional">
-            <input type="text" id="barbeiroNome" placeholder="Nome do Barbeiro" required>
-            <button type="submit">Adicionar Barbeiro</button>
-        </form>
-        <div id="listaProfissionais" style="margin-top: 20px;"></div>
+        
+        <div class="card-config">
+            <h3>Profissionais</h3>
+            <form id="formNovoProfissional">
+                <input type="text" id="barbeiroNome" placeholder="Nome do Barbeiro" required>
+                <button type="submit">Adicionar</button>
+            </form>
+            <div id="listaProfissionais" style="margin-top: 15px;"></div>
+        </div>
+
+        <div class="card-config">
+            <h3>Serviços e Preços</h3>
+            <form id="formNovoServico">
+                <input type="text" id="servicoNome" placeholder="Nome do Serviço" required>
+                <input type="number" id="servicoPreco" placeholder="Preço R$" required>
+                <input type="number" id="servicoTempo" placeholder="Tempo (min)" required>
+                <button type="submit">Adicionar Serviço</button>
+            </form>
+            <div id="listaServicos" style="margin-top: 15px;"></div>
+        </div>
     </div>
 
     <script src="firebase-init.js"></script>
@@ -50,19 +63,17 @@
     <script src="auth-controle.js"></script>
 
     <script>
-        // 1. Persistência de ID
         const urlParams = new URLSearchParams(window.location.search);
         let idLoja = urlParams.get('id') || localStorage.getItem("idLojaAtual");
         if (idLoja) localStorage.setItem("idLojaAtual", idLoja);
 
-        // 2. Links do menu
         const links = { "linkAgenda":"painel-geral.html", "linkCaixa":"caixa.html", "linkVendas":"index.html", "linkEstoque":"estoque.html", "linkCadastro":"cadastro.html", "linkFaturamento":"faturamento.html" };
         for (const [id, url] of Object.entries(links)) {
             const el = document.getElementById(id);
             if (el && idLoja) el.href = `${url}?id=${idLoja}`;
         }
 
-        // 3. Funções do Banco
+        // --- Lógica de Profissionais ---
         document.getElementById("formNovoProfissional").addEventListener("submit", (e) => {
             e.preventDefault();
             const nome = document.getElementById("barbeiroNome").value.trim();
@@ -70,21 +81,43 @@
             document.getElementById("barbeiroNome").value = "";
         });
 
-        function carregarProfissionais() {
-            window.db.collection("config_profissionais")
-                .where("estabelecimentoId", "==", idLoja)
-                .onSnapshot(snap => {
-                    const container = document.getElementById("listaProfissionais");
-                    container.innerHTML = "";
-                    snap.forEach(doc => {
-                        container.innerHTML += `<div class="card-barbeiro"><span>👤 ${doc.data().nome}</span><button onclick="deletar('${doc.id}')">X</button></div>`;
-                    });
+        // --- Lógica de Serviços ---
+        document.getElementById("formNovoServico").addEventListener("submit", (e) => {
+            e.preventDefault();
+            window.db.collection("servicos").add({
+                estabelecimentoId: idLoja,
+                nome: document.getElementById("servicoNome").value,
+                preco: parseFloat(document.getElementById("servicoPreco").value),
+                duracaoMinutos: parseInt(document.getElementById("servicoTempo").value),
+                ativo: true
+            });
+            document.getElementById("formNovoServico").reset();
+        });
+
+        function carregarDados() {
+            // Carregar Profissionais
+            window.db.collection("config_profissionais").where("estabelecimentoId", "==", idLoja).onSnapshot(snap => {
+                const container = document.getElementById("listaProfissionais");
+                container.innerHTML = "";
+                snap.forEach(doc => {
+                    container.innerHTML += `<div class="item-lista">👤 ${doc.data().nome} <button onclick="deletar('config_profissionais', '${doc.id}')">X</button></div>`;
                 });
+            });
+
+            // Carregar Serviços
+            window.db.collection("servicos").where("estabelecimentoId", "==", idLoja).onSnapshot(snap => {
+                const container = document.getElementById("listaServicos");
+                container.innerHTML = "";
+                snap.forEach(doc => {
+                    const s = doc.data();
+                    container.innerHTML += `<div class="item-lista">✂️ ${s.nome} - R$ ${s.preco} (${s.duracaoMinutos}min) <button onclick="deletar('servicos', '${doc.id}')">X</button></div>`;
+                });
+            });
         }
 
-        function deletar(id) { window.db.collection("config_profissionais").doc(id).delete(); }
+        function deletar(colecao, id) { window.db.collection(colecao).doc(id).delete(); }
 
-        window.onload = () => { if (idLoja) carregarProfissionais(); };
+        window.onload = () => { if (idLoja) carregarDados(); };
     </script>
 </body>
 </html>
