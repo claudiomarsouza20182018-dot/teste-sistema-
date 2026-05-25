@@ -6,6 +6,7 @@
     <title id="tituloAba">Agendamento Online</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <script src="firebase-init.js"></script> 
 
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
@@ -29,25 +30,28 @@
 <body>
 
 <div class="container-agendamento">
-    <h2 id="nomeEstabelecimento">Carregando barbearia...</h2>
-    <p class="sub">Reserve seu horário em menos de 1 minuto</p>
+    <h2 id="nomeEstabelecimento">Carregando...</h2>
+    <p class="sub">Reserve seu horário</p>
 
     <form id="formAgendamento">
         <div class="form-group">
             <label for="nomeCliente">Seu Nome</label>
-            <input type="text" id="nomeCliente" placeholder="Ex: Felipe Silva" required>
+            <input type="text" id="nomeCliente" required>
         </div>
         <div class="form-group">
-            <label for="whatsappCliente">WhatsApp / Celular</label>
-            <input type="tel" id="whatsappCliente" placeholder="(42) 99999-0000" required>
+            <label for="whatsappCliente">WhatsApp</label>
+            <input type="tel" id="whatsappCliente" required>
+        </div>
+        <div class="form-group">
+            <label for="profissionalSelecionado">Escolha o Profissional</label>
+            <select id="profissionalSelecionado" required>
+                <option value="">Carregando...</option>
+            </select>
         </div>
         <div class="form-group">
             <label for="servicoSelecionado">Escolha o Serviço</label>
             <select id="servicoSelecionado" required>
-                <option value="Corte Masculino" data-preco="35">Corte Masculino - R$ 35,00</option>
-                <option value="Barba Completa" data-preco="25">Barba Completa - R$ 25,00</option>
-                <option value="Combo Cabelo e Barba" data-preco="50">Combo Cabelo + Barba - R$ 50,00</option>
-                <option value="Tatuagem (Avaliação/Sessão)" data-preco="0">Tatuagem / Orçamento</option>
+                <option value="">Carregando...</option>
             </select>
         </div>
         <div class="form-group">
@@ -57,7 +61,7 @@
         <div class="form-group">
             <label>Horários Disponíveis</label>
             <div class="grade-horarios" id="containerHorarios">
-                <p class="aviso-vazio">Selecione uma data acima para ver os horários.</p>
+                <p class="aviso-vazio">Selecione o Profissional, o Serviço e a Data.</p>
             </div>
         </div>
         <button type="submit" class="btn-confirmar">Confirmar Agendamento</button>
@@ -65,67 +69,83 @@
 </div>
 
 <script>
-    const firebaseConfig = {
-        apiKey: "AIzaSyC3KQOyLglnEBlENTDmtXboODO-e984Sps",
-        authDomain: "lds-baber.firebaseapp.com",
-        projectId: "lds-baber",
-        storageBucket: "lds-baber.firebasestorage.app",
-        messagingSenderId: "214203799710",
-        appId: "1:214203799710:web:12e68a9772495a7c18838f",
-        measurementId: "G-Y0HMXH2XTL"
-    };
-
-    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
-
     const urlParams = new URLSearchParams(window.location.search);
-    // ID definido para buscar o registro "claudiomar-alves" no banco de dados
     let estabelecimentoId = urlParams.get('id') || "claudiomar-alves";
-
-    // Busca Nome - Depuração
-    console.log("Iniciando busca para o ID:", estabelecimentoId);
-
-    db.collection("usuarios")
-      .where("estabelecimentoId", "==", estabelecimentoId)
-      .get()
-      .then((snap) => {
-          console.log("Busca concluída. Documentos encontrados:", snap.size);
-          if (!snap.empty) {
-              snap.forEach(doc => {
-                  console.log("Dados do documento:", doc.data());
-                  const nome = doc.data().nomeBarbearia || "Barbearia";
-                  document.getElementById("nomeEstabelecimento").innerText = nome;
-              });
-          } else {
-              console.warn("Nenhum documento encontrado na coleção 'usuarios' com o ID:", estabelecimentoId);
-              document.getElementById("nomeEstabelecimento").innerText = "Barbearia não encontrada";
-          }
-      })
-      .catch((err) => {
-          console.error("Erro ao buscar no Firestore:", err);
-      });
-
-    const listaHorariosPadrao = ["09:00", "10:00", "11:00", "13:30", "14:30", "15:30", "16:30", "17:30", "18:30"];
     let horarioSelecionadoGlobal = null;
+
+    db.collection("usuarios").where("estabelecimentoId", "==", estabelecimentoId).get().then(snap => {
+        if (!snap.empty) document.getElementById("nomeEstabelecimento").innerText = snap.docs[0].data().nomeBarbearia;
+    });
+
+    db.collection("servicos").where("estabelecimentoId", "==", estabelecimentoId).where("ativo", "==", true).get().then(snap => {
+        const select = document.getElementById("servicoSelecionado");
+        select.innerHTML = '<option value="">Selecione um serviço</option>';
+        snap.forEach(doc => {
+            const s = doc.data();
+            select.innerHTML += `<option value="${s.nome}" data-preco="${s.preco}" data-tempo="${s.duracaoMinutos || 30}">${s.nome} - ${s.duracaoMinutos} min</option>`;
+        });
+    });
+
+    db.collection("config_profissionais").where("estabelecimentoId", "==", estabelecimentoId).get().then(snap => {
+        const select = document.getElementById("profissionalSelecionado");
+        select.innerHTML = '<option value="">Selecione um profissional</option>';
+        snap.forEach(doc => {
+            select.innerHTML += `<option value="${doc.data().nome}">${doc.data().nome}</option>`;
+        });
+    });
+
     const inputData = document.getElementById("dataAgendamento");
     inputData.min = new Date().toISOString().split("T")[0];
 
-    inputData.addEventListener("change", function() {
-        const [ano, mes, dia] = this.value.split("-");
-        const dataFormatadaBusca = `${dia.padStart(2, '0')}/${mes.padStart(2, '0')}/${ano}`;
+    function carregarHorarios() {
+        const prof = document.getElementById("profissionalSelecionado").value;
+        const data = document.getElementById("dataAgendamento").value;
+        const servicoEl = document.getElementById("servicoSelecionado");
+        const duracaoNova = parseInt(servicoEl.options[servicoEl.selectedIndex]?.getAttribute("data-tempo") || 0);
+        const container = document.getElementById("containerHorarios");
+
+        if (!prof || !data || !duracaoNova) {
+            container.innerHTML = '<p class="aviso-vazio">Selecione Profissional, Serviço e Data.</p>';
+            return;
+        }
+
+        container.innerHTML = "Carregando...";
+        horarioSelecionadoGlobal = null;
+
+        const [ano, mes, dia] = data.split("-");
+        const dataFormatadaBusca = `${dia}/${mes}/${ano}`;
         
         db.collection("agenda_clientes")
           .where("estabelecimentoId", "==", estabelecimentoId)
+          .where("profissional", "==", prof)
           .where("dataFormatada", "==", dataFormatadaBusca)
-          .where("status", "==", "Aguardando")
           .get().then(snap => {
-            let ocupados = [];
-            snap.forEach(doc => ocupados.push(doc.data().horario));
-            
-            const container = document.getElementById("containerHorarios");
+            let intervalosOcupados = [];
+            snap.forEach(doc => {
+                const ag = doc.data();
+                const [h, m] = ag.horario.split(':').map(Number);
+                const inicioMin = h * 60 + m;
+                intervalosOcupados.push({ inicio: inicioMin, fim: inicioMin + (ag.duracaoMinutos || 30) });
+            });
+
             container.innerHTML = "";
-            listaHorariosPadrao.forEach(hr => {
-                if (ocupados.includes(hr)) return;
+
+            // O sistema agora testa a cada 5 minutos (min += 5) para capturar qualquer espaço livre
+            for (let min = (9 * 60); min < (19 * 60); min += 5) {
+                let fimNovo = min + duracaoNova;
+                
+                // Verifica se o serviço termina dentro do horário de funcionamento (até as 19h)
+                if (fimNovo > (19 * 60)) break;
+
+                let temConflito = intervalosOcupados.some(ag => (min < ag.fim && fimNovo > ag.inicio));
+                
+                if (temConflito) continue;
+
+                let h = Math.floor(min / 60);
+                let m = min % 60;
+                let hr = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+
                 const b = document.createElement("div");
                 b.className = "btn-horario";
                 b.innerText = hr;
@@ -135,31 +155,37 @@
                     horarioSelecionadoGlobal = hr;
                 };
                 container.appendChild(b);
-            });
+            }
+            
+            if (container.innerHTML === "") {
+                container.innerHTML = '<p class="aviso-vazio">Nenhum horário disponível para esta duração.</p>';
+            }
         });
-    });
+    }
+
+    document.getElementById("dataAgendamento").addEventListener("change", carregarHorarios);
+    document.getElementById("servicoSelecionado").addEventListener("change", carregarHorarios);
+    document.getElementById("profissionalSelecionado").addEventListener("change", carregarHorarios);
 
     document.getElementById("formAgendamento").addEventListener("submit", function(e) {
         e.preventDefault();
-        if (!horarioSelecionadoGlobal) return alert("Selecione um horário!");
+        if (!horarioSelecionadoGlobal) return alert("Por favor, selecione um horário disponível.");
         
-        const dataAgendada = document.getElementById("dataAgendamento").value;
-        const [ano, mes, dia] = dataAgendada.split("-");
-        const dataFinalFormatada = `${dia.padStart(2, '0')}/${mes.padStart(2, '0')}/${ano}`;
-
+        const selS = document.getElementById("servicoSelecionado");
         db.collection("agenda_clientes").add({
             estabelecimentoId: estabelecimentoId,
-            cliente: document.getElementById("nomeCliente").value.trim(),
-            whatsapp: document.getElementById("whatsappCliente").value.trim(),
-            servico: document.getElementById("servicoSelecionado").value,
-            valor: parseFloat(document.getElementById("servicoSelecionado").options[document.getElementById("servicoSelecionado").selectedIndex].getAttribute("data-preco")),
+            cliente: document.getElementById("nomeCliente").value,
+            whatsapp: document.getElementById("whatsappCliente").value,
+            profissional: document.getElementById("profissionalSelecionado").value,
+            servico: selS.value,
+            duracaoMinutos: parseInt(selS.options[selS.selectedIndex].getAttribute("data-tempo")),
             horario: horarioSelecionadoGlobal,
+            dataFormatada: document.getElementById("dataAgendamento").value.split("-").reverse().join("/"),
             status: "Aguardando",
-            dataFormatada: dataFinalFormatada,
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        }).then(() => {
-            alert("Agendamento realizado com sucesso!");
-            location.reload();
+        }).then(() => { 
+            alert("Agendamento realizado!"); 
+            location.reload(); 
         });
     });
 </script>
