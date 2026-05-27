@@ -78,38 +78,48 @@
     <script src="auth-controle.js"></script>
 
     <script>
-        const urlParams = new URLSearchParams(window.location.search);
-        let idLoja = urlParams.get('id') || localStorage.getItem("idLojaAtual") || "lds-baber";
-        localStorage.setItem("idLojaAtual", idLoja);
+        // --- LÓGICA DE SEGURANÇA: Captura o ID ÚNICO do usuário logado ---
+        let idLoja = localStorage.getItem("idLojaAtual") || "lds-baber";
 
-        const links = {
-            "linkAgenda": "painel-geral.html", "linkCaixa": "caixa.html",
-            "linkVendas": "vendas.html", "linkEstoque": "estoque.html",
-            "linkCadastro": "cadastro.html", "linkFaturamento": "faturamento.html",
-            "linkConfig": "configuracoes.html"
-        };
+        firebase.auth().onAuthStateChanged((user) => {
+            if (user) {
+                // UID do Firebase é a chave definitiva de segurança
+                idLoja = user.uid;
+                localStorage.setItem("idLojaAtual", idLoja);
+                atualizarLinksNav();
+                // Recarrega a agenda do dia atual com o ID correto
+                renderizarCarrossel();
+            }
+        });
 
-        const paginaAtual = window.location.pathname.split("/").pop();
-        for (const [id, url] of Object.entries(links)) {
-            const el = document.getElementById(id);
-            if (el) {
-                el.href = `${url}?id=${idLoja}`;
-                el.classList.remove('active');
-                if (url === paginaAtual) el.classList.add('active');
+        function atualizarLinksNav() {
+            const links = {
+                "linkAgenda": "painel-geral.html", "linkCaixa": "caixa.html",
+                "linkVendas": "vendas.html", "linkEstoque": "estoque.html",
+                "linkCadastro": "cadastro.html", "linkFaturamento": "faturamento.html",
+                "linkConfig": "configuracoes.html"
+            };
+            const paginaAtual = window.location.pathname.split("/").pop();
+            for (const [id, url] of Object.entries(links)) {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.href = `${url}?id=${idLoja}`;
+                    el.classList.remove('active');
+                    if (url === paginaAtual) el.classList.add('active');
+                }
             }
         }
 
-        // --- BOTÃO CORRIGIDO AQUI ---
+        // --- BOTÃO EXCLUSIVO COM UID ---
         function copiarLink() {
-            // Alterado para apontar para a pasta /agendar/ conforme a estrutura nova
-            const link = `${window.location.origin}/teste-sistema-/agendar.html?id=${idLoja}`;
-            const tempInput = document.createElement("input");
-            tempInput.value = link;
-            document.body.appendChild(tempInput);
-            tempInput.select();
-            document.execCommand("copy");
-            document.body.removeChild(tempInput);
-            alert("Link de agendamento copiado: " + link);
+            const baseUrl = window.location.origin;
+            const link = `${baseUrl}/teste-sistema-/agendar.html?id=${idLoja}`;
+            
+            navigator.clipboard.writeText(link).then(() => {
+                alert("Link exclusivo copiado! \n" + link);
+            }).catch(() => {
+                alert("Copie o link manualmente: " + link);
+            });
         }
 
         let dataBase = new Date();
