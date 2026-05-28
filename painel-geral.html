@@ -8,23 +8,34 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
 
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background-color: #121214; color: #e1e1e6; margin: 0; display: flex; }
-        .nav-sidebar { width: 170px; background-color: #202024; border-right: 1px solid #323238; display: flex; flex-direction: column; padding: 20px 10px; height: 100vh; position: fixed; box-sizing: border-box; }
-        .sidebar-titulo { color: #a8a8a8; font-size: 12px; font-weight: bold; padding-left: 10px; margin-bottom: 15px; text-transform: uppercase; }
-        .nav-sidebar a { color: #ff9000; text-decoration: none; font-weight: bold; font-size: 12px; padding: 12px 10px; margin-bottom: 8px; border-radius: 5px; transition: background 0.2s; }
+        body { font-family: 'Segoe UI', sans-serif; background-color: #121214; color: #e1e1e6; margin: 0; display: flex; overflow-x: hidden; }
+
+        /* MENU LATERAL ESTREITO */
+        .nav-sidebar { width: 160px; height: 100vh; position: fixed; background-color: #202024; z-index: 1000; padding: 20px 10px; border-right: 1px solid #323238; transition: 0.3s; }
+        .nav-sidebar a { color: #ff9000; text-decoration: none; padding: 10px 5px; display: block; margin-bottom: 5px; border-radius: 5px; font-weight: bold; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .nav-sidebar a:hover { background-color: #2d2d34; }
-        .nav-sidebar a.active { color: #fff; background-color: #ff9000; }
-        
-        .main-content { margin-left: 170px; padding: 30px; width: 100%; }
-        header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 20px; border-bottom: 1px solid #323238; margin-bottom: 30px; }
-        
+        .sidebar-titulo { color: #a8a8a8; font-size: 12px; font-weight: bold; margin-bottom: 20px; text-align: center; }
+
+        /* CONTEÚDO PRINCIPAL AJUSTADO */
+        .main-content { padding: 20px; width: calc(100% - 160px); margin-left: 160px; transition: 0.3s; }
+
+        /* BOTÃO HAMBÚRGUER */
+        .btn-hamburger { display: none; position: fixed; top: 10px; left: 10px; z-index: 1001; background: #ff9000; border: none; padding: 8px; cursor: pointer; border-radius: 5px; }
+
+        /* RESPONSIVIDADE E DIAS */
+        .carrossel-dias { display: flex; gap: 8px; overflow-x: auto; padding: 10px 0; justify-content: flex-start; margin-top: 10px; }
+        .card-dia { background: #202024; padding: 10px; border-radius: 8px; min-width: 50px; text-align: center; cursor: pointer; border: 1px solid #323238; }
+        .card-dia.active { border-color: #ff9000; background: #ff9000; color: #121214; }
+
+        @media (max-width: 768px) {
+            .nav-sidebar { left: -160px; }
+            .nav-sidebar.active { left: 0; }
+            .main-content { margin-left: 0; width: 100%; }
+            .btn-hamburger { display: block; }
+        }
+
         .seletor-semana { display: flex; align-items: center; justify-content: center; gap: 20px; margin-bottom: 20px; }
         .btn-nav { background: #29292e; color: #ff9000; border: 1px solid #ff9000; padding: 8px 15px; cursor: pointer; border-radius: 4px; font-weight: bold; }
-        .carrossel-dias { display: flex; gap: 10px; overflow-x: auto; padding: 10px 0; justify-content: center; }
-        .card-dia { background: #202024; padding: 15px; border-radius: 8px; min-width: 70px; text-align: center; cursor: pointer; border: 1px solid #323238; transition: 0.2s; }
-        .card-dia:hover { border-color: #ff9000; }
-        .card-dia.active { border-color: #ff9000; background: #ff9000; color: #121214; }
-        
         .tabela-agenda { width: 100%; border-collapse: collapse; background: #202024; border-radius: 8px; overflow: hidden; margin-top: 20px; }
         th, td { padding: 15px; text-align: left; border-bottom: 1px solid #323238; }
         th { background-color: #29292e; color: #ff9000; }
@@ -33,26 +44,10 @@
 </head>
 <body>
 
-    <div class="nav-sidebar">
-        <span class="sidebar-titulo"></span>
-        <a href="#" id="linkAgenda">📅 Agenda</a>
-        <a href="#" id="linkCaixa">💰 Caixa Diário</a>
-        <a href="#" id="linkVendas">Registrar Venda</a>
-        <a href="#" id="linkEstoque">Ver Estoque</a>
-        <a href="#" id="linkCadastro">Cadastrar/Entrada</a>
-        <a href="#" id="linkFaturamento">Faturamento</a>
-        <a href="#" id="linkConfig">⚙️ Configurações</a>
-    </div>
-
     <div class="main-content">
-        <header>
-            <h1>Painel de Agendamentos</h1>
-            <div>
-                <button onclick="copiarLink()" style="background:#ff9000; color:#121214; border:none; padding:8px 12px; border-radius:4px; cursor:pointer; font-weight:bold; margin-right: 10px;">
-                    Link de Agendamento
-                </button>
-                <button onclick="fazerLogout()" style="background:#f74040; color:white; border:none; padding:8px; border-radius:4px; cursor:pointer;">Sair</button>
-            </div>
+        <header style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #323238; padding-bottom: 20px; margin-bottom: 30px;">
+            <h1>Agenda</h1>
+            <button onclick="copiarLink()" style="background:#ff9000; color:#121214; border:none; padding:8px 12px; border-radius:4px; cursor:pointer; font-weight:bold;">Link de Agendamento</button>
         </header>
 
         <div class="seletor-semana">
@@ -73,55 +68,12 @@
         </table>
     </div>
 
+    <script src="menu.js"></script>
     <script src="firebase-init.js"></script>
     <script src="config-global.js"></script>
     <script src="auth-controle.js"></script>
 
     <script>
-        // --- LÓGICA DE SEGURANÇA: Captura o ID ÚNICO do usuário logado ---
-        let idLoja = localStorage.getItem("idLojaAtual") || "lds-baber";
-
-        firebase.auth().onAuthStateChanged((user) => {
-            if (user) {
-                // UID do Firebase é a chave definitiva de segurança
-                idLoja = user.uid;
-                localStorage.setItem("idLojaAtual", idLoja);
-                atualizarLinksNav();
-                // Recarrega a agenda do dia atual com o ID correto
-                renderizarCarrossel();
-            }
-        });
-
-        function atualizarLinksNav() {
-            const links = {
-                "linkAgenda": "painel-geral.html", "linkCaixa": "caixa.html",
-                "linkVendas": "vendas.html", "linkEstoque": "estoque.html",
-                "linkCadastro": "cadastro.html", "linkFaturamento": "faturamento.html",
-                "linkConfig": "configuracoes.html"
-            };
-            const paginaAtual = window.location.pathname.split("/").pop();
-            for (const [id, url] of Object.entries(links)) {
-                const el = document.getElementById(id);
-                if (el) {
-                    el.href = `${url}?id=${idLoja}`;
-                    el.classList.remove('active');
-                    if (url === paginaAtual) el.classList.add('active');
-                }
-            }
-        }
-
-        // --- BOTÃO EXCLUSIVO COM UID ---
-        function copiarLink() {
-            const baseUrl = window.location.origin;
-            const link = `${baseUrl}/teste-sistema-/agendar.html?id=${idLoja}`;
-            
-            navigator.clipboard.writeText(link).then(() => {
-                alert("Link exclusivo copiado! \n" + link);
-            }).catch(() => {
-                alert("Copie o link manualmente: " + link);
-            });
-        }
-
         let dataBase = new Date();
 
         function renderizarCarrossel() {
@@ -152,39 +104,26 @@
         }
 
         function carregarAgendaDia(dataObj) {
-            const dia = String(dataObj.getDate()).padStart(2, '0');
-            const mes = String(dataObj.getMonth() + 1).padStart(2, '0');
-            const ano = dataObj.getFullYear();
-            const dataFormatada = `${dia}/${mes}/${ano}`;
-
+            const dataFormatada = dataObj.toLocaleDateString('pt-BR');
             const tbody = document.getElementById("listaAgendamentos");
             tbody.innerHTML = "<tr><td colspan='5'>Carregando...</td></tr>";
 
-            const db = firebase.firestore();
-            db.collection("agenda_clientes")
-              .where("estabelecimentoId", "==", idLoja)
-              .where("dataFormatada", "==", dataFormatada)
-              .onSnapshot(snap => {
-                  tbody.innerHTML = "";
-                  if (snap.empty) {
-                      tbody.innerHTML = "<tr><td colspan='5'>Nenhum agendamento neste dia.</td></tr>";
-                      return;
-                  }
-                  const agendamentos = [];
-                  snap.forEach(doc => agendamentos.push(doc.data()));
-                  agendamentos.sort((a, b) => a.horario.localeCompare(b.horario));
-                  agendamentos.forEach(d => {
-                      tbody.innerHTML += `
-                        <tr>
-                            <td>${d.cliente}</td>
-                            <td>${d.horario}</td>
-                            <td>${d.servico}</td>
-                            <td>R$ ${parseFloat(d.valor || 0).toFixed(2)}</td>
-                            <td><span class="status-badge">${d.status}</span></td>
-                        </tr>`;
-                  });
-              });
+            firebase.firestore().collection("agenda_clientes")
+                .where("estabelecimentoId", "==", localStorage.getItem("idLojaAtual"))
+                .where("dataFormatada", "==", dataFormatada)
+                .get().then(snap => {
+                    tbody.innerHTML = "";
+                    if (snap.empty) {
+                        tbody.innerHTML = "<tr><td colspan='5'>Nenhum agendamento neste dia.</td></tr>";
+                        return;
+                    }
+                    snap.forEach(doc => {
+                        const d = doc.data();
+                        tbody.innerHTML += `<tr><td>${d.cliente}</td><td>${d.horario}</td><td>${d.servico}</td><td>R$ ${d.valor}</td><td><span class="status-badge">${d.status}</span></td></tr>`;
+                    });
+                });
         }
+        
         renderizarCarrossel();
     </script>
 </body>
