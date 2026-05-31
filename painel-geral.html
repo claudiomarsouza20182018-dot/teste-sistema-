@@ -9,32 +9,31 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
 
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background-color: #121214; color: #e1e1e6; margin: 0; padding-bottom: 20px; font-size: 16px; }
+        body { font-family: 'Segoe UI', sans-serif; background-color: #121214; color: #e1e1e6; margin: 0; padding-bottom: 80px; font-size: 14px; }
         
-        /* Botão Hambúrguer maior para facilitar o toque */
-        .btn-hamburger { position: fixed; top: 10px; left: 10px; z-index: 999; background: #ff9000; border: none; padding: 15px 20px; border-radius: 8px; cursor: pointer; font-size: 24px; font-weight: bold; }
+        /* Menu no canto inferior esquerdo */
+        .btn-hamburger { position: fixed; bottom: 20px; left: 20px; z-index: 999; background: #ff9000; border: none; padding: 15px 20px; border-radius: 50px; cursor: pointer; font-size: 20px; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
         
-        .main-content { padding: 70px 15px 20px 15px; width: 100%; box-sizing: border-box; }
+        .main-content { padding: 15px; width: 100%; box-sizing: border-box; }
         .content-wrapper { width: 100%; max-width: 900px; margin: 0 auto; }
         
-        /* Ajuste dos inputs e seletor */
-        #seletorProfissional { background: #202024; color: #ff9000; border: 2px solid #ff9000; padding: 15px; border-radius: 8px; font-weight: bold; width: 100%; font-size: 16px; margin-bottom: 20px; }
+        /* Cabeçalho compacto: Link e Seletor lado a lado */
+        .header-top { display: flex; gap: 10px; margin-bottom: 15px; }
+        #seletorProfissional { background: #202024; color: #ff9000; border: 1px solid #ff9000; padding: 10px; border-radius: 8px; font-weight: bold; width: 60%; font-size: 14px; }
+        .btn-link { background:#ac845171; color:#fff; border:none; padding:10px; width: 40%; border-radius:8px; cursor:pointer; font-weight:bold; font-size: 12px; }
 
-        /* Carrossel de datas maior */
-        .carrossel-dias { display: flex; gap: 10px; overflow-x: auto; padding: 10px 0; justify-content: flex-start; margin-bottom: 20px; }
-        .card-dia { background: #202024; padding: 15px; border-radius: 12px; min-width: 60px; text-align: center; border: 1px solid #323238; }
+        .carrossel-dias { display: flex; gap: 8px; overflow-x: auto; padding: 5px 0; margin-bottom: 15px; }
+        .card-dia { background: #202024; padding: 10px; border-radius: 8px; min-width: 50px; text-align: center; border: 1px solid #323238; }
         .card-dia.active { border-color: #ff9000; background: #ff9000; color: #121214; }
         
-        /* Tabela ajustada */
-        .tabela-agenda { width: 100%; border-collapse: collapse; background: #202024; border-radius: 8px; overflow: hidden; font-size: 14px; }
-        th, td { padding: 15px 10px; text-align: left; border-bottom: 1px solid #323238; }
+        .tabela-agenda { width: 100%; border-collapse: collapse; background: #202024; border-radius: 8px; overflow: hidden; font-size: 12px; }
+        th, td { padding: 10px 5px; text-align: left; border-bottom: 1px solid #323238; }
         
-        /* Botões de Ação maiores */
-        .btn-acao { border: none; padding: 12px 16px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: bold; margin: 2px; width: 100%; }
+        .btn-acao { border: none; padding: 8px; border-radius: 4px; cursor: pointer; font-size: 10px; font-weight: bold; width: 100%; margin-bottom: 2px; }
         .btn-atendido { background: #28a745; color: white; }
         .btn-cancelar { background: #dc3545; color: white; }
         
-        .btn-nav { background: #29292e; color: #ff9000; border: 1px solid #ff9000; padding: 15px 25px; cursor: pointer; border-radius: 8px; font-weight: bold; font-size: 18px; }
+        .btn-nav { background: #29292e; color: #ad8856d2; border: 1px solid #9b856854; padding: 10px 20px; cursor: pointer; border-radius: 8px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -44,17 +43,17 @@
 
     <div class="main-content">
         <div class="content-wrapper">
-            <header style="margin-bottom: 30px;">
-                <button onclick="copiarLink()" style="background:#ff9000; color:#121214; border:none; padding:15px; width: 100%; border-radius:8px; cursor:pointer; font-weight:bold; font-size: 16px;">Link de Agendamento</button>
-            </header>
             
-            <select id="seletorProfissional" onchange="renderizarAgendaAtual()">
-                <option value="todos">Todos os Profissionais</option>
-            </select>
+            <div class="header-top">
+                <select id="seletorProfissional" onchange="renderizarAgendaAtual()">
+                    <option value="todos">Profissionais</option>
+                </select>
+                <button class="btn-link" onclick="copiarLink()">Agendamento</button>
+            </div>
 
-            <div class="seletor-semana" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+            <div class="seletor-semana" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px;">
                 <button class="btn-nav" onclick="mudarSemana(-1)">◀</button>
-                <span id="mesAnoDisplay" style="font-weight:bold; font-size: 18px;">---</span>
+                <span id="mesAnoDisplay" style="font-weight:bold; font-size: 16px;">---</span>
                 <button class="btn-nav" onclick="mudarSemana(1)">▶</button>
             </div>
 
@@ -63,7 +62,7 @@
             <div style="overflow-x: auto;">
                 <table class="tabela-agenda">
                     <thead><tr><th>Cliente</th><th>Horário</th><th>Serviço</th><th>Valor</th><th>Status</th><th>Ações</th></tr></thead>
-                    <tbody id="listaAgendamentos"><tr><td colspan="6" style="text-align:center;">Selecione uma data acima.</td></tr></tbody>
+                    <tbody id="listaAgendamentos"><tr><td colspan="6" style="text-align:center;">Selecione uma data.</td></tr></tbody>
                 </table>
             </div>
         </div>
@@ -71,57 +70,15 @@
 
     <script src="firebase-init.js"></script>
     <script>
-        // MÓDULO DO MENU
         fetch('menu.html').then(r => r.text()).then(html => { document.getElementById('menu-container').innerHTML = html; });
         function abrirMenu() { document.getElementById('menuOverlay').style.display = 'flex'; }
         function fecharMenu() { document.getElementById('menuOverlay').style.display = 'none'; }
-
-        // MÓDULO DA AGENDA (Seu código original)
-        let dataBase = new Date();
-        let dataSelecionada = new Date();
-        function carregarProfissionais() {
-            const idLoja = localStorage.getItem("idLojaAtual");
-            if (!idLoja) return;
-            const select = document.getElementById("seletorProfissional");
-            firebase.firestore().collection("config_profissionais").where("estabelecimentoId", "==", idLoja).onSnapshot(snap => {
-                select.innerHTML = '<option value="todos">Todos os Profissionais</option>';
-                snap.forEach(doc => { select.innerHTML += `<option value="${doc.data().nome}">${doc.data().nome}</option>`; });
-            });
-        }
-        function renderizarCarrossel() {
-            const container = document.getElementById('carrosselDatas');
-            container.innerHTML = "";
-            let temp = new Date(dataBase);
-            temp.setDate(temp.getDate() - (temp.getDay() === 0 ? 6 : temp.getDay() - 1));
-            document.getElementById('mesAnoDisplay').innerText = temp.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-            for (let i = 0; i < 7; i++) {
-                let dia = new Date(temp); dia.setDate(temp.getDate() + i);
-                const div = document.createElement('div');
-                div.className = 'card-dia';
-                div.innerHTML = `<small>${dia.toLocaleDateString('pt-BR', { weekday: 'short' })}</small><br><strong>${dia.getDate()}</strong>`;
-                div.onclick = () => { document.querySelectorAll('.card-dia').forEach(c => c.classList.remove('active')); div.classList.add('active'); dataSelecionada = dia; carregarAgendaDia(dia); };
-                container.appendChild(div);
-            }
-        }
+        
+        let dataBase = new Date(); let dataSelecionada = new Date();
+        function carregarProfissionais() { const idLoja = localStorage.getItem("idLojaAtual"); if (!idLoja) return; const select = document.getElementById("seletorProfissional"); firebase.firestore().collection("config_profissionais").where("estabelecimentoId", "==", idLoja).onSnapshot(snap => { select.innerHTML = '<option value="todos">Todos</option>'; snap.forEach(doc => { select.innerHTML += `<option value="${doc.data().nome}">${doc.data().nome}</option>`; }); }); }
+        function renderizarCarrossel() { const container = document.getElementById('carrosselDatas'); container.innerHTML = ""; let temp = new Date(dataBase); temp.setDate(temp.getDate() - (temp.getDay() === 0 ? 6 : temp.getDay() - 1)); document.getElementById('mesAnoDisplay').innerText = temp.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }); for (let i = 0; i < 7; i++) { let dia = new Date(temp); dia.setDate(temp.getDate() + i); const div = document.createElement('div'); div.className = 'card-dia'; div.innerHTML = `<small>${dia.toLocaleDateString('pt-BR', { weekday: 'short' })}</small><br><strong>${dia.getDate()}</strong>`; div.onclick = () => { document.querySelectorAll('.card-dia').forEach(c => c.classList.remove('active')); div.classList.add('active'); dataSelecionada = dia; carregarAgendaDia(dia); }; container.appendChild(div); } }
         function renderizarAgendaAtual() { carregarAgendaDia(dataSelecionada); }
-        async function carregarAgendaDia(dataObj) {
-            const dataFormatada = dataObj.toLocaleDateString('pt-BR');
-            const prof = document.getElementById("seletorProfissional").value;
-            const tbody = document.getElementById("listaAgendamentos");
-            tbody.innerHTML = "<tr><td colspan='6'>Carregando...</td></tr>";
-            let query = firebase.firestore().collection("agenda_clientes").where("estabelecimentoId", "==", localStorage.getItem("idLojaAtual")).where("dataFormatada", "==", dataFormatada);
-            if (prof !== "todos") query = query.where("profissional", "==", prof);
-            const snap = await query.get();
-            tbody.innerHTML = "";
-            if (snap.empty) { tbody.innerHTML = "<tr><td colspan='6' style='text-align:center;'>Nenhum agendamento.</td></tr>"; return; }
-            const servicosSnap = await firebase.firestore().collection("servicos").where("estabelecimentoId", "==", localStorage.getItem("idLojaAtual")).get();
-            const mapaPrecos = {};
-            servicosSnap.forEach(doc => { mapaPrecos[doc.data().nome] = doc.data().preco; });
-            snap.forEach(doc => {
-                const d = doc.data(); const idDoc = doc.id; const preco = mapaPrecos[d.servico] || "0,00";
-                tbody.innerHTML += `<tr><td>${d.cliente}</td><td>${d.horario}</td><td>${d.servico}</td><td>R$ ${preco}</td><td><span class="status-badge">${d.status}</span></td><td><button class="btn-acao btn-atendido" onclick="atualizarStatus('${idDoc}', 'Atendido')">Atendido</button><button class="btn-acao btn-cancelar" onclick="atualizarStatus('${idDoc}', 'Cancelado')">Cancelar</button></td></tr>`;
-            });
-        }
+        async function carregarAgendaDia(dataObj) { const dataFormatada = dataObj.toLocaleDateString('pt-BR'); const prof = document.getElementById("seletorProfissional").value; const tbody = document.getElementById("listaAgendamentos"); tbody.innerHTML = "<tr><td colspan='6'>Carregando...</td></tr>"; let query = firebase.firestore().collection("agenda_clientes").where("estabelecimentoId", "==", localStorage.getItem("idLojaAtual")).where("dataFormatada", "==", dataFormatada); if (prof !== "todos") query = query.where("profissional", "==", prof); const snap = await query.get(); tbody.innerHTML = ""; if (snap.empty) { tbody.innerHTML = "<tr><td colspan='6' style='text-align:center;'>Nenhum agendamento.</td></tr>"; return; } const servicosSnap = await firebase.firestore().collection("servicos").where("estabelecimentoId", "==", localStorage.getItem("idLojaAtual")).get(); const mapaPrecos = {}; servicosSnap.forEach(doc => { mapaPrecos[doc.data().nome] = doc.data().preco; }); snap.forEach(doc => { const d = doc.data(); const idDoc = doc.id; const preco = mapaPrecos[d.servico] || "0,00"; tbody.innerHTML += `<tr><td>${d.cliente}</td><td>${d.horario}</td><td>${d.servico}</td><td>R$ ${preco}</td><td><span class="status-badge">${d.status}</span></td><td><button class="btn-acao btn-atendido" onclick="atualizarStatus('${idDoc}', 'Atendido')">Atendido</button><button class="btn-acao btn-cancelar" onclick="atualizarStatus('${idDoc}', 'Cancelado')">Cancelar</button></td></tr>`; }); }
         function atualizarStatus(id, novoStatus) { firebase.firestore().collection("agenda_clientes").doc(id).update({ status: novoStatus }).then(() => renderizarAgendaAtual()).catch(err => console.error(err)); }
         function mudarSemana(offset) { dataBase.setDate(dataBase.getDate() + (offset * 7)); renderizarCarrossel(); }
         function copiarLink() { navigator.clipboard.writeText(`${window.location.origin}/agendar.html?id=${localStorage.getItem("idLojaAtual")}`); alert("Link copiado!"); }
