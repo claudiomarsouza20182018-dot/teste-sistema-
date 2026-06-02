@@ -1,4 +1,3 @@
-
 // --- FUNÇÃO DE LOGIN (O que faltava!) ---
 window.loginComGoogle = function() {
     const provider = new firebase.auth.GoogleAuthProvider();
