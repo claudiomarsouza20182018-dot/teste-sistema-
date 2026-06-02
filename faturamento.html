@@ -1,72 +1,188 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Faturamento - LDS Barber</title>
+    <title>Faturamento Detalhado - LDS Barber</title>
     
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
 
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background-color: #121214; color: #e1e1e6; margin: 0; padding: 0; display: flex; min-height: 100vh; }
-        .nav-sidebar { width: 170px; background-color: #202024; border-right: 1px solid #323238; display: flex; flex-direction: column; padding: 20px 10px; position: fixed; height: 100vh; box-sizing: border-box; }
-        .sidebar-titulo { color: #a8a8a8; font-size: 12px; font-weight: bold; padding-left: 10px; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 1px; }
-        .nav-sidebar a { color: #ff9000; text-decoration: none; font-weight: bold; font-size: 12px; padding: 12px 10px; margin-bottom: 8px; border-radius: 5px; transition: background 0.2s; }
-        .nav-sidebar a:hover { background-color: #2d2d34; }
-        .nav-sidebar a.active { color: #fff; background-color: #ff9000; }
-        .main-content { flex: 1; margin-left: 170px; padding: 30px; }
+        body { font-family: 'Segoe UI', sans-serif; background-color: #121214; color: #e1e1e6; margin: 0; padding: 0; }
+        .main-content { padding: 80px 30px 30px 30px; }
+        
+        .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .card-faturamento { background: #202024; border: 1px solid #323238; padding: 25px; border-radius: 12px; }
+        .card-faturamento p { color: #a8a8a8; margin: 0; font-size: 14px; }
+        .card-faturamento h1 { color: #fff; font-size: 28px; margin: 10px 0; }
+        .card-faturamento span { color: #00b37e; font-weight: bold; }
+        .total-geral { border: 2px solid #ff9000 !important; }
+
+        .secao-tabela { background: #202024; padding: 20px; border-radius: 8px; border: 1px solid #323238; margin-bottom: 30px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th { background: #29292e; color: #ff9000; padding: 12px; text-align: left; border: 1px solid #323238; }
+        td { padding: 12px; border: 1px solid #323238; }
+        h2 { border-left: 4px solid #ff9000; padding-left: 10px; }
+        
+        .btn-limpar { background: #ff3333; color: white; border: none; padding: 10px 15px; cursor: pointer; border-radius: 5px; margin-top: 10px; }
     </style>
 </head>
 <body>
-    <div class="nav-sidebar">
-        <span class="sidebar-titulo"></span>
-        <a href="#" id="linkAgenda">📅 Agenda</a>
-        <a href="#" id="linkCaixa">💰 Caixa Diário</a>
-        <a href="#" id="linkVendas">Registrar Venda</a>
-        <a href="#" id="linkEstoque">Ver Estoque</a>
-        <a href="#" id="linkCadastro">Cadastrar/Entrada</a>
-        <a href="#" id="linkFaturamento">Faturamento</a>
-        <a href="#" id="linkConfig">⚙️ Configurações</a>
-    </div>
+
+    <div id="menu-container"></div>
 
     <div class="main-content">
         <h1>📈 Relatório de Faturamento</h1>
+        
+        <div class="dashboard-grid">
+            <div class="card-faturamento">
+                <p>Serviços</p>
+                <h1 id="valorServicos">R$ 0,00</h1>
+                <span id="qtdServicos">0 atendimentos</span>
+            </div>
+            <div class="card-faturamento">
+                <p>Produtos</p>
+                <h1 id="valorProdutos">R$ 0,00</h1>
+                <span id="qtdProdutos">0 vendas</span>
+            </div>
+            <div class="card-faturamento total-geral">
+                <p>Total Geral</p>
+                <h1 id="valorTotal">R$ 0,00</h1>
+            </div>
         </div>
+
+        <div class="secao-tabela">
+            <h2>✂️ Detalhes dos Serviços</h2>
+            <table>
+                <thead><tr><th>Serviço</th><th>Qtd</th><th>Total</th></tr></thead>
+                <tbody id="tabelaServicos"></tbody>
+            </table>
+        </div>
+
+        <div class="secao-tabela">
+            <h2>👤 Faturamento por Profissional</h2>
+            <table>
+                <thead><tr><th>Profissional</th><th>Atendimentos</th><th>Total</th></tr></thead>
+                <tbody id="tabelaProfissionais"></tbody>
+            </table>
+        </div>
+
+        <div class="secao-tabela">
+            <h2>📦 Detalhes dos Produtos</h2>
+            <table>
+                <thead><tr><th>Categoria</th><th>Produto</th><th>Qtd</th><th>Total</th></tr></thead>
+                <tbody id="tabelaProdutos"></tbody>
+            </table>
+        </div>
+
+        <div class="secao-tabela" style="border-color: #ff3333;">
+            <h2 style="color: #ff3333; border-color: #ff3333;">⚠️ Limpeza de Dados</h2>
+            <button class="btn-limpar" onclick="limparColecao('historico_vendas')">Apagar Histórico de Vendas</button>
+            <button class="btn-limpar" onclick="limparColecao('agenda_clientes')" style="margin-left: 10px;">Apagar Histórico de Agendamentos</button>
+        </div>
+    </div>
 
     <script src="firebase-init.js"></script>
     <script src="config-global.js"></script>
     <script src="auth-controle.js"></script>
+    <script src="menu.js"></script>
 
     <script>
-        // 1. Persistência e Links Dinâmicos
         const urlParams = new URLSearchParams(window.location.search);
         let idLoja = urlParams.get('id') || localStorage.getItem("idLojaAtual");
-        if (idLoja) localStorage.setItem("idLojaAtual", idLoja);
+        
+        async function carregarRelatorios() {
+            if (!window.db || !idLoja) return;
 
-        const links = {
-            "linkAgenda": "painel-geral.html", "linkCaixa": "caixa.html",
-            "linkVendas": "vendas.html", "linkEstoque": "estoque.html",
-            "linkCadastro": "cadastro.html", "linkFaturamento": "faturamento.html",
-            "linkConfig": "configuracoes.html"
-        };
+            // 1. Mapa de preços dos serviços
+            const servicosSnap = await window.db.collection("servicos").where("estabelecimentoId", "==", idLoja).get();
+            const mapaPrecos = {};
+            servicosSnap.forEach(doc => mapaPrecos[doc.data().nome] = parseFloat(doc.data().preco) || 0);
 
-        // 2. Aplicar links e classe ativa (automático)
-        const paginaAtual = window.location.pathname.split("/").pop();
-        for (const [id, url] of Object.entries(links)) {
-            const el = document.getElementById(id);
-            if (el) {
-                // Monta o link garantindo que o ID da loja sempre acompanhe
-                el.href = `${url}?id=${idLoja || ''}`;
-                
-                // Detecta qual é a página atual para ativar o botão (laranja)
-                if (url === paginaAtual) {
-                    el.classList.add('active');
-                }
+            // 2. Processar Serviços e Profissionais
+            const snapServ = await window.db.collection("agenda_clientes").where("estabelecimentoId", "==", idLoja).get();
+            let servicosAgrupados = {}, profAgrupados = {}, totalS = 0, countS = 0;
+
+            snapServ.forEach(doc => {
+                let data = doc.data();
+                let nomeServ = data.servico || "Serviço sem nome";
+                let nomeProf = data.profissional || "Não definido";
+                let v = mapaPrecos[nomeServ] || 0;
+
+                // Agrupa por Serviço
+                if (!servicosAgrupados[nomeServ]) servicosAgrupados[nomeServ] = { qtd: 0, total: 0 };
+                servicosAgrupados[nomeServ].qtd += 1;
+                servicosAgrupados[nomeServ].total += v;
+
+                // Agrupa por Profissional
+                if (!profAgrupados[nomeProf]) profAgrupados[nomeProf] = { qtd: 0, total: 0 };
+                profAgrupados[nomeProf].qtd += 1;
+                profAgrupados[nomeProf].total += v;
+
+                totalS += v;
+                countS++;
+            });
+
+            // Renderizar Tabela de Serviços
+            const bodyServ = document.getElementById("tabelaServicos");
+            bodyServ.innerHTML = "";
+            for (let nome in servicosAgrupados) {
+                bodyServ.innerHTML += `<tr><td>${nome}</td><td>${servicosAgrupados[nome].qtd} un</td><td>R$ ${servicosAgrupados[nome].total.toFixed(2)}</td></tr>`;
             }
+
+            // Renderizar Tabela de Profissionais
+            const bodyProf = document.getElementById("tabelaProfissionais");
+            bodyProf.innerHTML = "";
+            for (let nome in profAgrupados) {
+                bodyProf.innerHTML += `<tr><td>${nome}</td><td>${profAgrupados[nome].qtd} atend.</td><td>R$ ${profAgrupados[nome].total.toFixed(2)}</td></tr>`;
+            }
+
+            // 3. Processar Produtos
+            const snapProd = await window.db.collection("historico_vendas").where("estabelecimentoId", "==", idLoja).get();
+            let produtosAgrupados = {}, totalP = 0, countP = 0;
+
+            snapProd.forEach(doc => {
+                let data = doc.data();
+                let nome = data.nomeProduto || "Produto sem nome";
+                let categoria = data.categoria || "Geral";
+                let qtd = parseInt(data.quantidade) || 1; 
+                let v = parseFloat(data.valorTotal || data.valor || 0);
+                
+                if (!produtosAgrupados[nome]) produtosAgrupados[nome] = { cat: categoria, qtd: 0, total: 0 };
+                produtosAgrupados[nome].qtd += qtd;
+                produtosAgrupados[nome].total += v;
+                totalP += v; 
+                countP += qtd;
+            });
+
+            const bodyProd = document.getElementById("tabelaProdutos");
+            bodyProd.innerHTML = "";
+            for (let nome in produtosAgrupados) {
+                bodyProd.innerHTML += `<tr><td>${produtosAgrupados[nome].cat}</td><td>${nome}</td><td>${produtosAgrupados[nome].qtd} un</td><td>R$ ${produtosAgrupados[nome].total.toFixed(2)}</td></tr>`;
+            }
+
+            document.getElementById("valorServicos").innerText = `R$ ${totalS.toFixed(2)}`;
+            document.getElementById("qtdServicos").innerText = `${countS} atendimentos`;
+            document.getElementById("valorProdutos").innerText = `R$ ${totalP.toFixed(2)}`;
+            document.getElementById("qtdProdutos").innerText = `${countP} unidades`;
+            document.getElementById("valorTotal").innerText = `R$ ${(totalS + totalP).toFixed(2)}`;
         }
+
+        async function limparColecao(colecao) {
+            if (!confirm(`Tem certeza que deseja apagar TODOS os dados de ${colecao}?`)) return;
+            try {
+                const snap = await window.db.collection(colecao).where("estabelecimentoId", "==", idLoja).get();
+                const batch = window.db.batch();
+                snap.forEach(doc => batch.delete(doc.ref));
+                await batch.commit();
+                alert("Dados removidos!");
+                location.reload();
+            } catch (e) { alert("Erro: " + e.message); }
+        }
+
+        carregarRelatorios();
     </script>
 </body>
 </html>
