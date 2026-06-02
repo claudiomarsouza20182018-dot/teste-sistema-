@@ -1,42 +1,28 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Estoque Atual</title>
+    <title>Estoque Atual - LDS Barber</title>
     
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
 
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background-color: #121214; color: #e1e1e6; margin: 0; padding: 0; display: flex; min-height: 100vh; }
-        .nav-sidebar { width: 170px; background-color: #202024; border-right: 1px solid #323238; display: flex; flex-direction: column; padding: 20px 10px; position: fixed; height: 100vh; box-sizing: border-box; }
-        .sidebar-titulo { color: #a8a8a8; font-size: 12px; font-weight: bold; padding-left: 10px; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 1px; }
-        .nav-sidebar a { color: #ff9000; text-decoration: none; font-weight: bold; font-size: 12px; padding: 12px 10px; margin-bottom: 8px; border-radius: 5px; transition: background 0.2s; }
-        .nav-sidebar a:hover { background-color: #2d2d34; }
-        .nav-sidebar a.active { color: #fff; background-color: #ff9000; }
-        .main-content { flex: 1; margin-left: 170px; padding: 30px; }
+        body { font-family: 'Segoe UI', sans-serif; background-color: #121214; color: #e1e1e6; margin: 0; padding: 0; }
+        .main-content { padding: 80px 30px 30px 30px; }
+        
         .tabela-estoque { width: 100%; border-collapse: collapse; background: #202024; border: 1px solid #323238; }
         .tabela-estoque th { background-color: #29292e; color: #ff9000; padding: 12px; text-align: left; }
         .tabela-estoque td { padding: 12px; border-bottom: 1px solid #29292e; }
         
-        /* Estilo da tag de categoria */
         .tag-cat { font-size: 10px; padding: 2px 6px; border-radius: 4px; background: #323238; color: #ff9000; text-transform: uppercase; font-weight: bold; }
     </style>
 </head>
 <body>
-    <div class="nav-sidebar">
-        <span class="sidebar-titulo"></span>
-        <a href="#" id="linkAgenda">📅 Agenda</a>
-        <a href="#" id="linkCaixa">💰 Caixa Diário</a>
-        <a href="#" id="linkVendas">Registrar Venda</a>
-        <a href="#" id="linkEstoque">Ver Estoque</a>
-        <a href="#" id="linkCadastro">Cadastrar/Entrada</a>
-        <a href="#" id="linkFaturamento">Faturamento</a>
-        <a href="#" id="linkConfig">⚙️ Configurações</a>
-    </div>
+
+    <div id="menu-container"></div>
 
     <div class="main-content">
         <h1>📦 Estoque e Serviços Cadastrados</h1>
@@ -53,31 +39,15 @@
     <script src="firebase-init.js"></script>
     <script src="config-global.js"></script>
     <script src="auth-controle.js"></script>
+    <script src="menu.js"></script>
+    <script src="estoque.js"></script>
 
     <script>
         const urlParams = new URLSearchParams(window.location.search);
         let idLoja = urlParams.get('id') || localStorage.getItem("idLojaAtual");
         if (idLoja) localStorage.setItem("idLojaAtual", idLoja);
 
-        const links = {
-            "linkAgenda": "painel-geral.html", "linkCaixa": "caixa.html",
-            "linkVendas": "vendas.html", "linkEstoque": "estoque.html",
-            "linkCadastro": "cadastro.html", "linkFaturamento": "faturamento.html",
-            "linkConfig": "configuracoes.html"
-        };
-
-        const paginaAtual = window.location.pathname.split("/").pop();
-        for (const [id, url] of Object.entries(links)) {
-            const el = document.getElementById(id);
-            if (el) {
-                el.href = `${url}?id=${idLoja}`;
-                if (url === paginaAtual) el.classList.add('active');
-            }
-        }
-
-        // --- CÓDIGO DE INICIALIZAÇÃO CORRIGIDO ---
         window.onload = () => {
-            // Pequeno atraso para garantir que o Firebase carregou o db
             setTimeout(() => {
                 if (typeof carregarTabelaEstoque === "function") {
                     if (idLoja) {
@@ -91,7 +61,5 @@
             }, 500);
         };
     </script>
-    
-    <script src="estoque.js"></script>
 </body>
 </html>
