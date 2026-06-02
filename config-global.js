@@ -1,4 +1,3 @@
-
 /**
  * Configuração Global: Identifica o ID da Barbearia
  * Este arquivo deve ser carregado em todas as páginas HTML
