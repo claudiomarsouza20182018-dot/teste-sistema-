@@ -53,13 +53,16 @@
     <script src="menu.js"></script>
 
     <script>
-        const urlParams = new URLSearchParams(window.location.search);
-        let idLoja = urlParams.get('id') || localStorage.getItem("idLojaAtual");
-        if (idLoja) localStorage.setItem("idLojaAtual", idLoja);
+        // Sincronização: Busca o ID da loja no localStorage definido pelo sistema
+        const idLoja = localStorage.getItem("idLojaAtual");
 
         window.onload = () => {
-            if (!idLoja) return;
+            if (!idLoja) {
+                document.getElementById("corpoTabelaCaixa").innerHTML = "<tr><td colspan='4'>ID da loja não encontrado.</td></tr>";
+                return;
+            }
 
+            // Sincronização em tempo real com o banco de dados da loja específica
             window.db.collection("historico_vendas")
                 .where("estabelecimentoId", "==", idLoja)
                 .onSnapshot(snap => {
@@ -80,7 +83,7 @@
                             <td><span class="tag-categoria">${categoria}</span></td>
                             <td>${v.nomeProduto || 'Venda'}</td>
                             <td>R$ ${valorNumerico.toFixed(2)}</td>
-                            <td>${v.timestamp ? new Date(v.timestamp.toDate()).toLocaleDateString() : '-'}</td>
+                            <td>${v.timestamp && typeof v.timestamp.toDate === 'function' ? v.timestamp.toDate().toLocaleDateString() : '-'}</td>
                         </tr>`;
                     });
 
