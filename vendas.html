@@ -4,29 +4,41 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Registrar Venda - LDS Barber</title>
-
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
 
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background-color: #121214; color: #e1e1e6; margin: 0; padding: 0; }
-        .main-content { padding: 80px 30px 30px 30px; } /* Aumentei o padding superior para o botão não cobrir o título */
-        .produto-item { background: #202024; padding: 15px; margin: 10px 0; border-radius: 8px; display: flex; align-items: center; gap: 10px; border: 1px solid #323238; }
-        input { width: 50px; padding: 8px; background: #121214; color: #fff; border: 1px solid #323238; border-radius: 4px; text-align: center; }
-        button { padding: 8px 12px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; transition: opacity 0.2s; }
-        button:hover { opacity: 0.8; }
+        body { font-family: 'Segoe UI', sans-serif; background-color: #121214; color: #e1e1e6; margin: 0; display: flex; height: 100vh; flex-direction: column; }
+        @media (min-width: 768px) { body { flex-direction: row; } }
+        
+        .coluna-esquerda { flex: 2; padding: 20px; overflow-y: auto; }
+        .coluna-direita { flex: 1; background: #202024; padding: 20px; border-left: 1px solid #323238; display: flex; flex-direction: column; }
+        
+        input[type="text"] { width: 100%; box-sizing: border-box; padding: 12px; margin-bottom: 20px; background: #121214; border: 1px solid #323238; color: white; border-radius: 5px; }
+        .produto-item { background: #202024; padding: 15px; margin-bottom: 10px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #323238; }
+        .btn-add { background: #00b37e; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; }
+        .btn-finalizar { background: #00b37e; color: white; width: 100%; padding: 15px; border: none; font-weight: bold; cursor: pointer; border-radius: 5px; margin-top: 20px; }
     </style>
 </head>
 <body>
 
-    <div id="menu-container"></div>
+    <div class="coluna-esquerda">
+        <h1>Produtos</h1>
+        <input type="text" id="busca" placeholder="🔍 Buscar produto..." onkeyup="filtrar()">
+        <div id="listaProdutos"></div>
+    </div>
 
-    <div class="main-content">
-        <h1>Registrar Nova Venda</h1>
-        <div id="listaProdutos">
-            <p style="color: #a8a8a8;">Carregando produtos...</p>
-        </div>
+    <div class="coluna-direita">
+        <h3>Carrinho</h3>
+        <div id="itensCarrinho"></div>
+        <h2 id="totalCarrinho">Total: R$ 0,00</h2>
+        <select id="formaPagamento" style="padding: 10px; width: 100%; background: #121214; color: white;">
+            <option value="Dinheiro">Dinheiro</option>
+            <option value="Pix">Pix</option>
+            <option value="Cartão">Cartão</option>
+        </select>
+        <button class="btn-finalizar" onclick="finalizar()">FINALIZAR VENDA</button>
     </div>
 
     <script src="firebase-init.js"></script>
@@ -37,83 +49,81 @@
     <script>
         const urlParams = new URLSearchParams(window.location.search);
         let idLoja = urlParams.get('id') || localStorage.getItem("idLojaAtual");
-        
-        if (!idLoja) {
-            window.location.href = "index.html";
-        } else {
-            localStorage.setItem("idLojaAtual", idLoja);
-        }
+        if (idLoja) localStorage.setItem("idLojaAtual", idLoja);
 
-        window.addEventListener('DOMContentLoaded', () => {
-            const container = document.getElementById("listaProdutos");
-            
-            window.db.collection("estoque")
-                .where("estabelecimentoId", "==", idLoja)
-                .onSnapshot((snapshot) => {
-                    container.innerHTML = "";
-                    if(snapshot.empty) { 
-                        container.innerHTML = `<p>Nenhum produto encontrado.</p>`; 
-                        return; 
-                    }
+        let todosProdutos = [];
+        let carrinho = [];
 
-                    snapshot.forEach((doc) => {
-                        const prod = doc.data();
-                        const cat = prod.categoria || 'Geral';
-                        const div = document.createElement("div");
-                        div.className = "produto-item";
-                        div.innerHTML = `
-                            <div style="flex-grow: 1;">
-                                <strong>${prod.nome || 'Sem nome'}</strong><br>
-                                <span style="color: #ff9000;">R$ ${prod.preco || '0.00'}</span> 
-                                <small style="color: #666;">(Estoque: ${prod.quantidade || 0} | Cat: ${cat})</small>
-                            </div>
-                            <input type="number" id="qtd_${doc.id}" value="1" min="1">
-                            <button onclick="vender('${doc.id}', '${prod.nome}', ${prod.preco}, '${cat}', 'Pix')" style="background: #008080; color: #fff;">Pix</button>
-                            <button onclick="vender('${doc.id}', '${prod.nome}', ${prod.preco}, '${cat}', 'Dinheiro')" style="background: #28a745; color: #fff;">Dinheiro</button>
-                            <button onclick="vender('${doc.id}', '${prod.nome}', ${prod.preco}, '${cat}', 'Cartão')" style="background: #007bff; color: #fff;">Cartão</button>
-                        `;
-                        container.appendChild(div);
-                    });
-                });
+        window.db.collection("estoque").where("estabelecimentoId", "==", idLoja).onSnapshot(snap => {
+            todosProdutos = [];
+            snap.forEach(doc => todosProdutos.push({id: doc.id, ...doc.data()}));
+            renderizar(todosProdutos);
         });
 
-        function vender(produtoId, nome, preco, categoria, forma) {
-            const qtdInput = document.getElementById(`qtd_${produtoId}`);
-            const qtdVendida = parseInt(qtdInput.value);
-            
-            if (qtdVendida <= 0) {
-                alert("Quantidade inválida!");
-                return;
-            }
+        function renderizar(lista) {
+            const container = document.getElementById("listaProdutos");
+            container.innerHTML = lista.map(p => `
+                <div class="produto-item">
+                    <div><strong>${p.nome}</strong><br><small>R$ ${p.preco} | Est: ${p.quantidade}</small></div>
+                    <button class="btn-add" onclick="adicionar('${p.id}', '${p.nome}', ${p.preco})">+</button>
+                </div>
+            `).join('');
+        }
 
-            const total = preco * qtdVendida;
-            const produtoRef = window.db.collection("estoque").doc(produtoId);
-            const vendaRef = window.db.collection("historico_vendas").doc();
+        function filtrar() {
+            const termo = document.getElementById("busca").value.toLowerCase();
+            renderizar(todosProdutos.filter(p => p.nome.toLowerCase().includes(termo)));
+        }
 
-            window.db.runTransaction((transaction) => {
-                return transaction.get(produtoRef).then((doc) => {
-                    if (!doc.exists) throw "Produto não encontrado!";
-                    const estoqueAtual = doc.data().quantidade || 0;
-                    if (estoqueAtual < qtdVendida) throw "Estoque insuficiente!";
-                    transaction.update(produtoRef, { quantidade: estoqueAtual - qtdVendida });
-                    transaction.set(vendaRef, {
-                        produtoId: produtoId,
-                        nomeProduto: nome,
-                        categoria: categoria,
-                        quantidade: qtdVendida,
-                        valorTotal: total,
-                        formaPagamento: forma,
-                        estabelecimentoId: idLoja,
-                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                    });
+        function adicionar(id, nome, preco) {
+            carrinho.push({id, nome, preco});
+            let total = carrinho.reduce((acc, item) => acc + item.preco, 0);
+            document.getElementById("totalCarrinho").innerText = `Total: R$ ${total.toFixed(2)}`;
+            document.getElementById("itensCarrinho").innerHTML += `<div>${nome} - R$ ${preco.toFixed(2)}</div>`;
+        }
+
+        async function finalizar() {
+            if(carrinho.length === 0) return alert("Carrinho vazio!");
+            const forma = document.getElementById("formaPagamento").value;
+
+            try {
+                await window.db.runTransaction(async (transaction) => {
+                    // 1. Fase de LEITURA: coletar dados de estoque de todos os itens
+                    let atualizacoes = [];
+                    for (let item of carrinho) {
+                        const produtoRef = window.db.collection("estoque").doc(item.id);
+                        const doc = await transaction.get(produtoRef);
+                        
+                        if (!doc.exists) throw "Produto não encontrado: " + item.nome;
+                        const estoqueAtual = doc.data().quantidade || 0;
+                        if (estoqueAtual < 1) throw "Estoque insuficiente para: " + item.nome;
+
+                        atualizacoes.push({ ref: produtoRef, novaQtd: estoqueAtual - 1 });
+                    }
+
+                    // 2. Fase de ESCRITA: aplicar as alterações
+                    for (let alt of atualizacoes) {
+                        transaction.update(alt.ref, { quantidade: alt.novaQtd });
+                    }
+
+                    for (let item of carrinho) {
+                        const vendaRef = window.db.collection("historico_vendas").doc();
+                        transaction.set(vendaRef, {
+                            nomeProduto: item.nome,
+                            valorTotal: item.preco,
+                            formaPagamento: forma,
+                            estabelecimentoId: idLoja,
+                            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                    }
                 });
-            })
-            .then(() => alert(`Venda de ${nome} realizada com sucesso!`))
-            .catch(err => {
-                console.error("Erro:", err);
+                alert("Venda finalizada com sucesso!");
+                window.location.reload();
+            } catch (err) {
+                console.error(err);
                 alert("Erro ao processar venda: " + err);
-            });
+            }
         }
     </script>
 </body>
-</html>
+</html>s
