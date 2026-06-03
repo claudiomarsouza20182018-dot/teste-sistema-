@@ -15,6 +15,7 @@ function carregarTabelaEstoque(idLoja) {
         return;
     }
 
+    // Busca apenas os itens que pertencem ao estabelecimento logado
     window.db.collection("estoque") 
         .where("estabelecimentoId", "==", idLoja) 
         .onSnapshot((snapshot) => {
@@ -29,17 +30,18 @@ function carregarTabelaEstoque(idLoja) {
             snapshot.forEach((doc) => {
                 const p = doc.data();
                 const docId = doc.id;
-                const precoFormatado = Number(p.preco || 0).toFixed(2);
                 
-                // Lógica da Categoria: busca 'categoria' ou 'tipo', senão exibe 'Geral'
+                // Formatação segura de valores
+                const precoFormatado = !isNaN(Number(p.preco)) ? Number(p.preco).toFixed(2) : "0.00";
+                const quantidade = p.quantidade || 0;
+                const nome = p.nome || "Sem nome";
                 const categoria = p.categoria || p.tipo || "Geral";
                 
-                // ORDEM CORRETA DAS COLUNAS:
                 linhas += `
                     <tr>
                         <td><span class="tag-cat">${categoria}</span></td>
-                        <td>${p.nome || 'Sem nome'}</td>
-                        <td>${p.quantidade || 0}</td>
+                        <td>${nome}</td>
+                        <td>${quantidade}</td>
                         <td>R$ ${precoFormatado}</td>
                         <td>
                             <button onclick="excluirItem('${docId}')" style="background:#f75a68; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">Excluir</button>
@@ -52,7 +54,7 @@ function carregarTabelaEstoque(idLoja) {
             
         }, (error) => {
             console.error("Erro ao carregar estoque: ", error);
-            corpoTabela.innerHTML = "<tr><td colspan='5'>Erro ao acessar banco de dados.</td></tr>";
+            corpoTabela.innerHTML = "<tr><td colspan='5'>Erro ao acessar banco de dados. Verifique suas permissões.</td></tr>";
         });
 }
 
@@ -64,10 +66,11 @@ function excluirItem(docId) {
         window.db.collection("estoque").doc(docId).delete()
             .then(() => {
                 console.log("Item removido com sucesso!");
+                // O onSnapshot acima atualizará a tabela automaticamente
             })
             .catch((err) => {
                 console.error("Erro ao excluir: ", err);
-                alert("Erro ao excluir.");
+                alert("Erro ao excluir. Verifique se você tem permissão.");
             });
     }
 }
