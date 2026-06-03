@@ -12,11 +12,10 @@
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #121214; color: #e1e1e6; margin: 0; padding: 0; }
         .main-content { padding: 80px 30px 30px 30px; max-width: 700px; margin: 0 auto; }
-        
         .secao-cadastro { background: #202024; padding: 20px; border-radius: 8px; border: 1px solid #323238; }
         .campo-form { display: flex; flex-direction: column; margin-bottom: 15px; }
         input, select { padding: 10px; border-radius: 5px; background: #121214; color: #fff; border: 1px solid #323238; }
-        .btn-acao { background: #00b37e; color: #fff; border: none; padding: 12px; border-radius: 5px; cursor: pointer; font-weight: bold; width: 100%; }
+        .btn-acao { background: #00b37e; color: #fff; border: none; padding: 12px; border-radius: 5px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 10px; }
         .btn-mini { background: #ff9000; color: #fff; border: none; padding: 8px; margin-left: 5px; border-radius: 5px; cursor: pointer; }
     </style>
 </head>
@@ -71,6 +70,7 @@
         let idLoja = urlParams.get('id') || localStorage.getItem("idLojaAtual");
         if (idLoja) localStorage.setItem("idLojaAtual", idLoja);
 
+        // Função para criar categoria nova isolada
         async function adicionarCategoria() {
             const inputCat = document.getElementById("novaCategoria");
             const nome = inputCat.value.trim();
@@ -82,13 +82,16 @@
                     estabelecimentoId: idLoja
                 });
                 inputCat.value = "";
-                alert("Categoria criada!");
+                alert("Categoria criada com sucesso!");
             } catch (e) {
                 alert("Erro ao criar: " + e.message);
             }
         }
 
+        // Carregar categorias da loja específica ao abrir
         window.onload = async () => {
+            if(!idLoja) return alert("ID da loja não encontrado!");
+
             window.db.collection("categorias")
                 .where("estabelecimentoId", "==", idLoja)
                 .onSnapshot(snap => {
@@ -100,9 +103,11 @@
                 });
         };
 
+        // Salvar produto com ID da loja
         document.getElementById("cadastroProdutoForm").onsubmit = (e) => {
             e.preventDefault();
-            window.db.collection("estoque").add({
+            
+            const produto = {
                 nome: document.getElementById("nomeProduto").value,
                 categoria: document.getElementById("categoriaProduto").value,
                 quantidade: parseInt(document.getElementById("qtdProduto").value),
@@ -110,13 +115,16 @@
                 preco: parseFloat(document.getElementById("precoVenda").value),
                 estabelecimentoId: idLoja,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            }).then(() => {
-                alert("Salvo com sucesso!");
-                document.getElementById("cadastroProdutoForm").reset();
-            }).catch(err => {
-                console.error("Erro ao salvar:", err);
-                alert("Erro ao salvar: " + err.message);
-            });
+            };
+
+            window.db.collection("estoque").add(produto)
+                .then(() => {
+                    alert("Produto salvo com sucesso!");
+                    document.getElementById("cadastroProdutoForm").reset();
+                })
+                .catch(err => {
+                    alert("Erro ao salvar: " + err.message);
+                });
         };
     </script>
 </body>
