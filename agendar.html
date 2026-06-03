@@ -25,7 +25,9 @@
 <body>
 
 <div class="container-agendamento">
-    <h2 id="nomeEstabelecimento">Carregando...</h2>
+    <!-- Texto fixo conforme solicitado -->
+    <h2 id="nomeEstabelecimento">Agendar</h2>
+    
     <form id="formAgendamento">
         <div class="form-group">
             <label>Seu Nome</label>
@@ -62,11 +64,6 @@
     
     const db = window.db; 
     let horarioSelecionadoGlobal = null;
-
-    // Carregar nome da barbearia
-    db.collection("usuarios").where("estabelecimentoId", "==", idLoja).get().then(snap => {
-        if (!snap.empty) document.getElementById("nomeEstabelecimento").innerText = snap.docs[0].data().nomeBarbearia || "Agendamento";
-    });
 
     // Carregar Profissionais
     db.collection("config_profissionais").where("estabelecimentoId", "==", idLoja).get().then(snap => {
