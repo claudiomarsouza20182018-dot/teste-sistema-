@@ -11,7 +11,7 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
         body { background-color: #121214; color: #e1e1e6; padding: 20px; display: flex; justify-content: center; }
-        .container-agendamento { width: 100%; max-width: 450px; background: #202024; padding: 25px; border-radius: 8px; border: 1px solid #323238; margin-bottom: 20px; }
+        .container-agendamento { width: 100%; max-width: 450px; background: #202024; padding: 25px; border-radius: 8px; border: 1px solid #323238; }
         h2 { text-align: center; color: #fff; margin-bottom: 20px; }
         .form-group { margin-bottom: 18px; }
         label { display: block; margin-bottom: 8px; color: #a8a8a8; font-size: 14px; }
@@ -24,61 +24,63 @@
 </head>
 <body>
 
-<div style="width: 100%; max-width: 450px;">
-    <div class="container-agendamento">
-        <h2 id="nomeEstabelecimento">Carregando...</h2>
-        <form id="formAgendamento">
-            <div class="form-group">
-                <label>Seu Nome</label>
-                <input type="text" id="nomeCliente" required>
-            </div>
-            <div class="form-group">
-                <label>WhatsApp</label>
-                <input type="tel" id="whatsappCliente" required>
-            </div>
-            <div class="form-group">
-                <label>Profissional</label>
-                <select id="profissionalSelecionado" required><option value="">Selecione...</option></select>
-            </div>
-            <div class="form-group">
-                <label>Serviço</label>
-                <select id="servicoSelecionado" required><option value="">Selecione...</option></select>
-            </div>
-            <div class="form-group">
-                <label>Dia</label>
-                <input type="date" id="dataAgendamento" required>
-            </div>
-            <div class="form-group">
-                <label>Horários Disponíveis</label>
-                <div class="grade-horarios" id="containerHorarios"></div>
-            </div>
-            <button type="submit" class="btn-confirmar">Confirmar Agendamento</button>
-        </form>
-    </div>
+<div class="container-agendamento">
+    <h2 id="nomeEstabelecimento">Carregando...</h2>
+    <form id="formAgendamento">
+        <div class="form-group">
+            <label>Seu Nome</label>
+            <input type="text" id="nomeCliente" required>
+        </div>
+        <div class="form-group">
+            <label>WhatsApp</label>
+            <input type="tel" id="whatsappCliente" required>
+        </div>
+        <div class="form-group">
+            <label>Profissional</label>
+            <select id="profissionalSelecionado" required><option value="">Selecione...</option></select>
+        </div>
+        <div class="form-group">
+            <label>Serviço</label>
+            <select id="servicoSelecionado" required><option value="">Selecione...</option></select>
+        </div>
+        <div class="form-group">
+            <label>Dia</label>
+            <input type="date" id="dataAgendamento" required>
+        </div>
+        <div class="form-group">
+            <label>Horários Disponíveis</label>
+            <div class="grade-horarios" id="containerHorarios"></div>
+        </div>
+        <button type="submit" class="btn-confirmar">Confirmar Agendamento</button>
+    </form>
 </div>
 
 <script>
     const urlParams = new URLSearchParams(window.location.search);
     let idLoja = urlParams.get('id') || localStorage.getItem("idLojaAtual");
+    if (idLoja) localStorage.setItem("idLojaAtual", idLoja);
+    
     const db = window.db; 
     let horarioSelecionadoGlobal = null;
 
-    // ... (mantive suas consultas de Firestore iguais)
+    // Carregar nome da barbearia
     db.collection("usuarios").where("estabelecimentoId", "==", idLoja).get().then(snap => {
         if (!snap.empty) document.getElementById("nomeEstabelecimento").innerText = snap.docs[0].data().nomeBarbearia || "Agendamento";
     });
 
+    // Carregar Profissionais
     db.collection("config_profissionais").where("estabelecimentoId", "==", idLoja).get().then(snap => {
         const select = document.getElementById("profissionalSelecionado");
         snap.forEach(doc => { select.innerHTML += `<option value="${doc.data().nome}">${doc.data().nome}</option>`; });
     });
 
+    // Carregar Serviços
     db.collection("servicos").where("estabelecimentoId", "==", idLoja).get().then(snap => {
         const select = document.getElementById("servicoSelecionado");
         snap.forEach(doc => {
             const s = doc.data();
-            if(s.ativo) { 
-                select.innerHTML += `<option value="${s.nome}" data-tempo="${s.duracaoMinutos}">${s.nome} - R$ ${s.preco} (${s.duracaoMinutos} min)</option>`; 
+            if(s.ativo !== false) {
+                select.innerHTML += `<option value="${s.nome}" data-tempo="${s.duracaoMinutos}">${s.nome} - R$ ${s.preco} (${s.duracaoMinutos} min)</option>`;
             }
         });
     });
@@ -112,11 +114,8 @@
 
         container.innerHTML = "";
 
-        // O loop varre de 5 em 5 minutos para encontrar qualquer brecha na agenda
         for (let min = (9 * 60); min < (19 * 60); min += 5) { 
             let fimTentativo = min + duracao;
-            
-            // Verifica se o serviço de 'duracao' minutos cabe começando neste 'min'
             let ocupado = intervalosOcupados.some(i => (min < i.fim && fimTentativo > i.inicio));
             
             if (!ocupado && fimTentativo <= (19 * 60)) {
@@ -130,8 +129,6 @@
                     horarioSelecionadoGlobal = hr;
                 };
                 container.appendChild(b);
-                
-                // Pula o tempo do serviço para não listar horários que sobrepõem o serviço que acabou de ser listado
                 min += (duracao - 5); 
             }
         }
@@ -154,7 +151,13 @@
             horario: horarioSelecionadoGlobal,
             dataFormatada: document.getElementById("dataAgendamento").value.split("-").reverse().join("/"),
             status: "Aguardando"
-        }).then(() => { alert("Agendamento realizado!"); location.reload(); });
+        }).then(() => { 
+            alert("Agendamento realizado com sucesso!"); 
+            location.reload(); 
+        }).catch(err => {
+            console.error(err);
+            alert("Erro ao agendar. Verifique as permissões do banco.");
+        });
     };
 </script>
 </body>
