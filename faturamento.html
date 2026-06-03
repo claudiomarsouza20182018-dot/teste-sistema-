@@ -94,80 +94,89 @@
         let idLoja = urlParams.get('id') || localStorage.getItem("idLojaAtual");
         
         async function carregarRelatorios() {
-            if (!window.db || !idLoja) return;
-
-            // 1. Mapa de preços dos serviços
-            const servicosSnap = await window.db.collection("servicos").where("estabelecimentoId", "==", idLoja).get();
-            const mapaPrecos = {};
-            servicosSnap.forEach(doc => mapaPrecos[doc.data().nome] = parseFloat(doc.data().preco) || 0);
-
-            // 2. Processar Serviços e Profissionais
-            const snapServ = await window.db.collection("agenda_clientes").where("estabelecimentoId", "==", idLoja).get();
-            let servicosAgrupados = {}, profAgrupados = {}, totalS = 0, countS = 0;
-
-            snapServ.forEach(doc => {
-                let data = doc.data();
-                let nomeServ = data.servico || "Serviço sem nome";
-                let nomeProf = data.profissional || "Não definido";
-                let v = mapaPrecos[nomeServ] || 0;
-
-                // Agrupa por Serviço
-                if (!servicosAgrupados[nomeServ]) servicosAgrupados[nomeServ] = { qtd: 0, total: 0 };
-                servicosAgrupados[nomeServ].qtd += 1;
-                servicosAgrupados[nomeServ].total += v;
-
-                // Agrupa por Profissional
-                if (!profAgrupados[nomeProf]) profAgrupados[nomeProf] = { qtd: 0, total: 0 };
-                profAgrupados[nomeProf].qtd += 1;
-                profAgrupados[nomeProf].total += v;
-
-                totalS += v;
-                countS++;
-            });
-
-            // Renderizar Tabela de Serviços
-            const bodyServ = document.getElementById("tabelaServicos");
-            bodyServ.innerHTML = "";
-            for (let nome in servicosAgrupados) {
-                bodyServ.innerHTML += `<tr><td>${nome}</td><td>${servicosAgrupados[nome].qtd} un</td><td>R$ ${servicosAgrupados[nome].total.toFixed(2)}</td></tr>`;
+            if (!window.db) {
+                console.warn("Firebase ainda não inicializado, tentando novamente em 1s...");
+                setTimeout(carregarRelatorios, 1000);
+                return;
+            }
+            if (!idLoja) {
+                console.error("ID da Loja não encontrado.");
+                return;
             }
 
-            // Renderizar Tabela de Profissionais
-            const bodyProf = document.getElementById("tabelaProfissionais");
-            bodyProf.innerHTML = "";
-            for (let nome in profAgrupados) {
-                bodyProf.innerHTML += `<tr><td>${nome}</td><td>${profAgrupados[nome].qtd} atend.</td><td>R$ ${profAgrupados[nome].total.toFixed(2)}</td></tr>`;
+            try {
+                // 1. Mapa de preços dos serviços
+                const servicosSnap = await window.db.collection("servicos").where("estabelecimentoId", "==", idLoja).get();
+                const mapaPrecos = {};
+                servicosSnap.forEach(doc => mapaPrecos[doc.data().nome] = parseFloat(doc.data().preco) || 0);
+
+                // 2. Processar Serviços
+                const snapServ = await window.db.collection("agenda_clientes").where("estabelecimentoId", "==", idLoja).get();
+                let servicosAgrupados = {}, profAgrupados = {}, totalS = 0, countS = 0;
+
+                snapServ.forEach(doc => {
+                    let data = doc.data();
+                    let nomeServ = data.servico || "Serviço sem nome";
+                    let nomeProf = data.profissional || "Não definido";
+                    let v = mapaPrecos[nomeServ] || 0;
+
+                    if (!servicosAgrupados[nomeServ]) servicosAgrupados[nomeServ] = { qtd: 0, total: 0 };
+                    servicosAgrupados[nomeServ].qtd += 1;
+                    servicosAgrupados[nomeServ].total += v;
+
+                    if (!profAgrupados[nomeProf]) profAgrupados[nomeProf] = { qtd: 0, total: 0 };
+                    profAgrupados[nomeProf].qtd += 1;
+                    profAgrupados[nomeProf].total += v;
+
+                    totalS += v;
+                    countS++;
+                });
+
+                const bodyServ = document.getElementById("tabelaServicos");
+                bodyServ.innerHTML = "";
+                for (let nome in servicosAgrupados) {
+                    bodyServ.innerHTML += `<tr><td>${nome}</td><td>${servicosAgrupados[nome].qtd} un</td><td>R$ ${servicosAgrupados[nome].total.toFixed(2)}</td></tr>`;
+                }
+
+                const bodyProf = document.getElementById("tabelaProfissionais");
+                bodyProf.innerHTML = "";
+                for (let nome in profAgrupados) {
+                    bodyProf.innerHTML += `<tr><td>${nome}</td><td>${profAgrupados[nome].qtd} atend.</td><td>R$ ${profAgrupados[nome].total.toFixed(2)}</td></tr>`;
+                }
+
+                // 3. Processar Produtos
+                const snapProd = await window.db.collection("historico_vendas").where("estabelecimentoId", "==", idLoja).get();
+                let produtosAgrupados = {}, totalP = 0, countP = 0;
+
+                snapProd.forEach(doc => {
+                    let data = doc.data();
+                    let nome = data.nomeProduto || "Produto sem nome";
+                    let categoria = data.categoria || "Geral";
+                    let qtd = parseInt(data.quantidade) || 1; 
+                    let v = parseFloat(data.valorTotal || data.valor || 0);
+                    
+                    if (!produtosAgrupados[nome]) produtosAgrupados[nome] = { cat: categoria, qtd: 0, total: 0 };
+                    produtosAgrupados[nome].qtd += qtd;
+                    produtosAgrupados[nome].total += v;
+                    totalP += v; 
+                    countP += qtd;
+                });
+
+                const bodyProd = document.getElementById("tabelaProdutos");
+                bodyProd.innerHTML = "";
+                for (let nome in produtosAgrupados) {
+                    bodyProd.innerHTML += `<tr><td>${produtosAgrupados[nome].cat}</td><td>${nome}</td><td>${produtosAgrupados[nome].qtd} un</td><td>R$ ${produtosAgrupados[nome].total.toFixed(2)}</td></tr>`;
+                }
+
+                document.getElementById("valorServicos").innerText = `R$ ${totalS.toFixed(2)}`;
+                document.getElementById("qtdServicos").innerText = `${countS} atendimentos`;
+                document.getElementById("valorProdutos").innerText = `R$ ${totalP.toFixed(2)}`;
+                document.getElementById("qtdProdutos").innerText = `${countP} unidades`;
+                document.getElementById("valorTotal").innerText = `R$ ${(totalS + totalP).toFixed(2)}`;
+
+            } catch (error) {
+                console.error("Erro ao carregar faturamento:", error);
             }
-
-            // 3. Processar Produtos
-            const snapProd = await window.db.collection("historico_vendas").where("estabelecimentoId", "==", idLoja).get();
-            let produtosAgrupados = {}, totalP = 0, countP = 0;
-
-            snapProd.forEach(doc => {
-                let data = doc.data();
-                let nome = data.nomeProduto || "Produto sem nome";
-                let categoria = data.categoria || "Geral";
-                let qtd = parseInt(data.quantidade) || 1; 
-                let v = parseFloat(data.valorTotal || data.valor || 0);
-                
-                if (!produtosAgrupados[nome]) produtosAgrupados[nome] = { cat: categoria, qtd: 0, total: 0 };
-                produtosAgrupados[nome].qtd += qtd;
-                produtosAgrupados[nome].total += v;
-                totalP += v; 
-                countP += qtd;
-            });
-
-            const bodyProd = document.getElementById("tabelaProdutos");
-            bodyProd.innerHTML = "";
-            for (let nome in produtosAgrupados) {
-                bodyProd.innerHTML += `<tr><td>${produtosAgrupados[nome].cat}</td><td>${nome}</td><td>${produtosAgrupados[nome].qtd} un</td><td>R$ ${produtosAgrupados[nome].total.toFixed(2)}</td></tr>`;
-            }
-
-            document.getElementById("valorServicos").innerText = `R$ ${totalS.toFixed(2)}`;
-            document.getElementById("qtdServicos").innerText = `${countS} atendimentos`;
-            document.getElementById("valorProdutos").innerText = `R$ ${totalP.toFixed(2)}`;
-            document.getElementById("qtdProdutos").innerText = `${countP} unidades`;
-            document.getElementById("valorTotal").innerText = `R$ ${(totalS + totalP).toFixed(2)}`;
         }
 
         async function limparColecao(colecao) {
@@ -182,7 +191,8 @@
             } catch (e) { alert("Erro: " + e.message); }
         }
 
-        carregarRelatorios();
+        // Inicia após a carga da página
+        window.onload = carregarRelatorios;
     </script>
 </body>
 </html>
