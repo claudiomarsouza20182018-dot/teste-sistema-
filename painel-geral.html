@@ -14,7 +14,7 @@
         .content-wrapper { width: 100%; max-width: 900px; margin: 0 auto; }
         .header-top { display: flex; gap: 10px; margin-bottom: 15px; }
         #seletorProfissional { background: #202024; color: #ff9000; border: 1px solid #ff9000; padding: 10px; border-radius: 8px; font-weight: bold; width: 60%; }
-        .btn-link { background:#ff9100; color:#fff; border:none; padding:10px; width: 40%; border-radius:8px; cursor:pointer; font-weight:bold; }
+        .btn-link { background:#ff9100; color:#121214; border:none; padding:10px; width: 40%; border-radius:8px; cursor:pointer; font-weight:bold; }
         .carrossel-dias { display: flex; gap: 8px; overflow-x: auto; padding: 5px 0; margin-bottom: 15px; }
         .card-dia { background: #202024; padding: 10px; border-radius: 8px; min-width: 50px; text-align: center; border: 1px solid #323238; cursor: pointer; }
         .card-dia.active { border-color: #ff9000; background: #ff9000; color: #121214; }
@@ -38,7 +38,7 @@
                 <select id="seletorProfissional" onchange="renderizarAgendaAtual()">
                     <option value="todos">Profissionais</option>
                 </select>
-                <button class="btn-link" onclick="copiarLink()">Link Agendamento</button>
+                <button class="btn-link" onclick="copiarLink()">Copiar Link 📋</button>
             </div>
 
             <div class="seletor-semana" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px;">
@@ -62,10 +62,8 @@
         let dataSelecionada = new Date();
         const PIXELS_POR_HORA = 100;
 
-        // Monitora autenticação
         firebase.auth().onAuthStateChanged((user) => {
             if (user) {
-                // A função obterIdComercio() centraliza a busca (config-global.js)
                 const idLoja = obterIdComercio();
                 carregarProfissionais(idLoja);
                 renderizarCarrossel();
@@ -74,6 +72,27 @@
                 window.location.href = "index.html";
             }
         });
+
+        // Função corrigida para usar o UID (ID do Documento) real do Firebase
+        function copiarLink() {
+            const user = firebase.auth().currentUser;
+            
+            if (!user) {
+                alert("Erro: Você não está logado.");
+                return;
+            }
+            
+            // Pega o UID (código estranho único) direto do Firebase Auth
+            const idLoja = user.uid; 
+            
+            const link = `${window.location.origin}/agendar.html?id=${idLoja}`;
+            
+            navigator.clipboard.writeText(link).then(() => {
+                alert("Link com seu ID único copiado com sucesso!");
+            }).catch(err => {
+                prompt("Copie o seu link abaixo:", link);
+            });
+        }
 
         function renderizarLinhasDeFundo() {
             const container = document.getElementById("listaAgendamentos");
@@ -95,7 +114,6 @@
             const container = document.getElementById("listaAgendamentos");
             
             try {
-                // Sincronizado para buscar pelo campo 'estabelecimentoId' centralizado
                 const snap = await firebase.firestore().collection("agenda_clientes")
                     .where("estabelecimentoId", "==", idLoja)
                     .where("dataFormatada", "==", dataFormatada).get();
@@ -163,7 +181,6 @@
         function renderizarAgendaAtual() { carregarAgendaDia(dataSelecionada, obterIdComercio()); }
         function atualizarStatus(id, novoStatus) { firebase.firestore().collection("agenda_clientes").doc(id).update({ status: novoStatus }).then(() => renderizarAgendaAtual()); }
         function mudarSemana(offset) { dataBase.setDate(dataBase.getDate() + (offset * 7)); renderizarCarrossel(); }
-        function copiarLink() { const id = obterIdComercio(); if(id) navigator.clipboard.writeText(`${window.location.origin}/agendar.html?id=${id}`); }
     </script>
 </body>
 </html>
