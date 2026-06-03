@@ -36,7 +36,7 @@ function monitorarAutenticacao() {
     });
 }
 
-// --- FUNÇÃO DE SINCRONIZAÇÃO ---
+// --- FUNÇÃO DE SINCRONIZAÇÃO (AJUSTADA PARA UID) ---
 async function sincronizarUsuarioEloja(user, estaNaPaginaLogin) {
     const db = firebase.firestore();
     const usuarioRef = db.collection("usuarios").doc(user.uid);
@@ -45,6 +45,7 @@ async function sincronizarUsuarioEloja(user, estaNaPaginaLogin) {
         console.log("Tentando acessar dados no Firestore...");
         const doc = await usuarioRef.get();
         
+        // FORÇAMOS o uso do user.uid como ID da loja, garantindo independência total.
         let idLoja = user.uid;
 
         if (!doc.exists) {
@@ -52,15 +53,17 @@ async function sincronizarUsuarioEloja(user, estaNaPaginaLogin) {
             await usuarioRef.set({
                 nome: user.displayName || "Usuário",
                 email: user.email,
-                estabelecimentoId: idLoja,
+                estabelecimentoId: idLoja, // O ID do documento é o próprio estabelecimentoId
                 criadoEm: firebase.firestore.FieldValue.serverTimestamp()
             });
         } else {
-            idLoja = doc.data().estabelecimentoId || user.uid;
+            // Ignoramos qualquer valor antigo salvo no banco e usamos o UID atual do Firebase.
+            idLoja = user.uid;
         }
 
+        // Define no localStorage o ID técnico (UID)
         localStorage.setItem("idLojaAtual", idLoja);
-        console.log("ID da Loja definido:", idLoja);
+        console.log("ID da Loja definido (UID):", idLoja);
 
         // Se estiver na tela de login e já estiver logado, redireciona
         if (estaNaPaginaLogin) {
