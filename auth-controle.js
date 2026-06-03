@@ -4,6 +4,8 @@ window.loginComGoogle = function() {
     firebase.auth().signInWithPopup(provider)
         .then((result) => {
             console.log("Login realizado com sucesso!");
+            // Redirecionamento forçado após sucesso no login
+            window.location.href = "painel-geral.html"; 
         })
         .catch((error) => {
             console.error("Erro no login:", error);
@@ -17,6 +19,7 @@ function monitorarAutenticacao() {
         console.log("Estado de autenticação mudou:", user ? "Logado" : "Deslogado");
         
         const path = window.location.pathname;
+        // Verifica se está no index ou na raiz
         const estaNaPaginaLogin = path.includes("index.html") || path === "/" || path === "";
 
         if (user) {
@@ -25,6 +28,7 @@ function monitorarAutenticacao() {
         } else {
             console.log("Nenhum usuário logado.");
             localStorage.removeItem("idLojaAtual");
+            // Se não estiver na página de login e não houver usuário, volta para o index
             if (!estaNaPaginaLogin) {
                 window.location.href = "index.html";
             }
@@ -58,15 +62,16 @@ async function sincronizarUsuarioEloja(user, estaNaPaginaLogin) {
         localStorage.setItem("idLojaAtual", idLoja);
         console.log("ID da Loja definido:", idLoja);
 
+        // Se estiver na tela de login e já estiver logado, redireciona
         if (estaNaPaginaLogin) {
             console.log("Redirecionando para painel-geral.html");
             window.location.href = "painel-geral.html";
         }
     } catch (error) {
         console.error("Erro CRÍTICO na sincronização:", error);
-        alert("Erro de permissão no Firestore. Verifique suas regras.");
+        alert("Erro de permissão no Firestore. Verifique suas regras no Firebase Console.");
     }
 }
 
-// Inicializa
+// Inicializa o monitoramento assim que o arquivo carregar
 monitorarAutenticacao();
