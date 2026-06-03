@@ -1,39 +1,39 @@
 /**
  * Configuração Global: Identifica o ID da Barbearia
- * Este arquivo deve ser carregado em todas as páginas HTML
  */
 
-// Função para obter o ID do comércio de forma confiável
 function obterIdComercio() {
-    // 1. Tenta pegar da URL (prioridade, pois permite navegação direta)
-    const urlParams = new URLSearchParams(window.location.search);
-    let id = urlParams.get('id');
-    
-    // 2. Se não estiver na URL, tenta recuperar do sessionStorage
-    // Isso é útil se o usuário navegar entre páginas e a URL perder o parâmetro
-    if (!id) {
-        id = sessionStorage.getItem('estabelecimentoId');
-    }
-    
-    return id;
+    // Tenta pegar do LocalStorage primeiro
+    return localStorage.getItem('idLojaAtual') || new URLSearchParams(window.location.search).get('id');
 }
 
-// Função para salvar o ID quando o login ocorrer ou for detectado
 function salvarIdComercio(id) {
     if (id) {
-        sessionStorage.setItem('estabelecimentoId', id);
+        localStorage.setItem('idLojaAtual', id);
     }
 }
 
-// Escuta a autenticação para garantir que o ID esteja sempre sincronizado
-firebase.auth().onAuthStateChanged((user) => {
+// Escuta a autenticação de forma assíncrona e segura
+firebase.auth().onAuthStateChanged(async (user) => {
     if (user) {
-        // Se o usuário estiver logado, busca o ID no Firestore caso não tenha
-        const db = firebase.firestore();
-        db.collection("usuarios").doc(user.uid).get().then((doc) => {
+        // Se já temos o ID salvo, não precisamos chamar o Firestore novamente (Economiza leitura)
+        if (localStorage.getItem('idLojaAtual')) return;
+
+        try {
+            const db = firebase.firestore();
+            const doc = await db.collection("usuarios").doc(user.uid).get();
+            
             if (doc.exists && doc.data().estabelecimentoId) {
                 salvarIdComercio(doc.data().estabelecimentoId);
+                console.log("ID da loja sincronizado com sucesso.");
+            } else {
+                console.warn("Usuário logado, mas não possui 'estabelecimentoId' definido.");
             }
-        });
+        } catch (error) {
+            console.error("Erro ao buscar ID do comércio no Firestore:", error);
+            // IMPORTANTE: Se der erro de permissão aqui, verifique suas Regras de Segurança
+        }
+    } else {
+        localStorage.removeItem('idLojaAtual');
     }
 });
