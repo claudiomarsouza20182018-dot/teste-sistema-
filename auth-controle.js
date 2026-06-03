@@ -1,68 +1,71 @@
-// --- FUNÇÃO DE LOGIN (O que faltava!) ---
+// --- FUNÇÃO DE LOGIN ---
 window.loginComGoogle = function() {
     const provider = new firebase.auth.GoogleAuthProvider();
     firebase.auth().signInWithPopup(provider)
-    .then((result) => {
-        console.log("Login com Google iniciado...");
-        // O monitorarAutenticacao detectará a mudança de estado automaticamente
-    })
-    .catch((error) => {
-        console.error("Erro no login:", error);
-        alert("Erro ao realizar login: " + error.message);
-    });
+        .then((result) => {
+            console.log("Login realizado com sucesso!");
+        })
+        .catch((error) => {
+            console.error("Erro no login:", error);
+            alert("Erro ao realizar login: " + error.message);
+        });
 };
 
-// --- FUNÇÃO DE MONITORAMENTO (Sua lógica, corrigida para ser mais estável) ---
+// --- FUNÇÃO DE MONITORAMENTO ---
 function monitorarAutenticacao() {
     firebase.auth().onAuthStateChanged((user) => {
+        console.log("Estado de autenticação mudou:", user ? "Logado" : "Deslogado");
+        
         const path = window.location.pathname;
-        const estaNaPaginaLogin = path.includes("index.html") || path === "/" || path.endsWith("/");
+        const estaNaPaginaLogin = path.includes("index.html") || path === "/" || path === "";
 
         if (user) {
-            console.log("Usuário logado:", user.uid);
-            if (estaNaPaginaLogin) {
-                verificarOuCriarUsuario(user);
-            } else {
-                const nomeEl = document.getElementById("nomeUsuarioLogado");
-                if (nomeEl) nomeEl.innerText = user.displayName || "Barbeiro";
-            }
+            console.log("Usuário detectado, iniciando sincronização...");
+            sincronizarUsuarioEloja(user, estaNaPaginaLogin);
         } else {
             console.log("Nenhum usuário logado.");
+            localStorage.removeItem("idLojaAtual");
             if (!estaNaPaginaLogin) {
-                window.location.href = "index.html"; 
+                window.location.href = "index.html";
             }
         }
     });
 }
 
-// --- FUNÇÃO DE CRIAÇÃO ---
-function verificarOuCriarUsuario(user) {
+// --- FUNÇÃO DE SINCRONIZAÇÃO ---
+async function sincronizarUsuarioEloja(user, estaNaPaginaLogin) {
     const db = firebase.firestore();
     const usuarioRef = db.collection("usuarios").doc(user.uid);
 
-    usuarioRef.get().then((doc) => {
-        if (doc.exists && doc.data().estabelecimentoId) {
-            window.location.href = `painel-geral.html?id=${doc.data().estabelecimentoId}`;
-        } else {
-            let idAutomatico = user.displayName
-                ? user.displayName.toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-")
-                : `barbearia-${user.uid.substring(0, 5)}`;
+    try {
+        console.log("Tentando acessar dados no Firestore...");
+        const doc = await usuarioRef.get();
+        
+        let idLoja = user.uid;
 
-            usuarioRef.set({
+        if (!doc.exists) {
+            console.log("Usuário novo, criando registro...");
+            await usuarioRef.set({
                 nome: user.displayName || "Usuário",
                 email: user.email,
-                estabelecimentoId: idAutomatico,
+                estabelecimentoId: idLoja,
                 criadoEm: firebase.firestore.FieldValue.serverTimestamp()
-            }).then(() => {
-                window.location.href = `painel-geral.html?id=${idAutomatico}`;
             });
+        } else {
+            idLoja = doc.data().estabelecimentoId || user.uid;
         }
-    });
-}
 
-// --- LOGOUT ---
-function fazerLogout() {
-    firebase.auth().signOut().then(() => window.location.href = "index.html");
+        localStorage.setItem("idLojaAtual", idLoja);
+        console.log("ID da Loja definido:", idLoja);
+
+        if (estaNaPaginaLogin) {
+            console.log("Redirecionando para painel-geral.html");
+            window.location.href = "painel-geral.html";
+        }
+    } catch (error) {
+        console.error("Erro CRÍTICO na sincronização:", error);
+        alert("Erro de permissão no Firestore. Verifique suas regras.");
+    }
 }
 
 // Inicializa
