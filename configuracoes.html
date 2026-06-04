@@ -18,7 +18,6 @@
         .item-lista { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #323238; align-items: center; }
         .btn-edit { background: #4a4a50; color: white; }
         .btn-del { background: #d32f2f; color: white; }
-        .input-edit { width: 90px; }
     </style>
 </head>
 <body>
@@ -50,84 +49,82 @@
     </div>
 
     <script src="firebase-init.js"></script>
-    <script src="config-global.js"></script>
     <script src="auth-controle.js"></script>
     <script src="menu.js"></script>
 
     <script>
-        const urlParams = new URLSearchParams(window.location.search);
-        let idLoja = urlParams.get('id') || localStorage.getItem("idLojaAtual");
-        if (idLoja) localStorage.setItem("idLojaAtual", idLoja);
-        
         let cacheDados = {};
 
-        function editar(id, colecao) {
+        // Funções globais de edição/deleção
+        window.editar = (id, colecao) => {
             const data = cacheDados[id];
             const div = document.getElementById(id);
-            
             if (colecao === 'config_profissionais') {
-                div.innerHTML = `
-                    <div>👤 <input type="text" id="editNome_${id}" value="${data.nome}"></div>
-                    <button onclick="salvar('${colecao}', '${id}', {nome: document.getElementById('editNome_${id}').value})">💾</button>
-                `;
+                div.innerHTML = `<div>👤 <input type="text" id="editNome_${id}" value="${data.nome}"></div>
+                                 <button onclick="salvar('${colecao}', '${id}', {nome: document.getElementById('editNome_${id}').value})">💾</button>`;
             } else {
-                div.innerHTML = `
-                    <div style="display: flex; gap: 10px; align-items: center; flex-grow: 1;">
-                        ✂️ <input type="text" id="editNome_${id}" value="${data.nome}" style="width:120px" placeholder="Nome">
-                        <input type="number" id="editPreco_${id}" value="${data.preco}" style="width:80px" placeholder="R$">
-                        <input type="number" id="editTempo_${id}" value="${data.duracaoMinutos}" style="width:60px" placeholder="Min">
-                    </div>
-                    <button onclick="salvar('${colecao}', '${id}', {
-                        nome: document.getElementById('editNome_${id}').value,
-                        preco: parseFloat(document.getElementById('editPreco_${id}').value), 
-                        duracaoMinutos: parseInt(document.getElementById('editTempo_${id}').value)
-                    })">💾</button>
-                `;
+                div.innerHTML = `<div style="display: flex; gap: 10px;">
+                                    ✂️ <input type="text" id="editNome_${id}" value="${data.nome}" style="width:100px">
+                                    <input type="number" id="editPreco_${id}" value="${data.preco}" style="width:60px">
+                                    <input type="number" id="editTempo_${id}" value="${data.duracaoMinutos}" style="width:50px">
+                                 </div>
+                                 <button onclick="salvar('${colecao}', '${id}', {nome: document.getElementById('editNome_${id}').value, preco: parseFloat(document.getElementById('editPreco_${id}').value), duracaoMinutos: parseInt(document.getElementById('editTempo_${id}').value)})">💾</button>`;
             }
-        }
-
-        function salvar(colecao, id, dados) {
-            window.db.collection(colecao).doc(id).update(dados).then(() => {
-                alert("Atualizado com sucesso!");
-                carregarDados();
-            });
-        }
-
-        function deletar(colecao, id) { if(confirm("Confirmar exclusão?")) window.db.collection(colecao).doc(id).delete(); }
-
-        function carregarDados() {
-            // Profissionais
-            window.db.collection("config_profissionais").where("estabelecimentoId", "==", idLoja).onSnapshot(snap => {
-                const container = document.getElementById("listaProfissionais");
-                container.innerHTML = "";
-                snap.forEach(doc => {
-                    cacheDados[doc.id] = doc.data();
-                    container.innerHTML += `<div class="item-lista" id="${doc.id}">👤 ${doc.data().nome} 
-                        <div><button class="btn-edit" onclick="editar('${doc.id}', 'config_profissionais')">✏️</button>
-                        <button class="btn-del" onclick="deletar('config_profissionais', '${doc.id}')">X</button></div></div>`;
-                });
-            });
-
-            // Serviços
-            window.db.collection("servicos").where("estabelecimentoId", "==", idLoja).onSnapshot(snap => {
-                const container = document.getElementById("listaServicos");
-                container.innerHTML = "";
-                snap.forEach(doc => {
-                    const s = doc.data();
-                    cacheDados[doc.id] = s;
-                    container.innerHTML += `<div class="item-lista" id="${doc.id}">✂️ ${s.nome} - R$ ${s.preco} (${s.duracaoMinutos}min) 
-                        <div><button class="btn-edit" onclick="editar('${doc.id}', 'servicos')">✏️</button>
-                        <button class="btn-del" onclick="deletar('servicos', '${doc.id}')">X</button></div></div>`;
-                });
-            });
-        }
-
-        window.onload = async () => { 
-            // Opcional: Se o seu menu.js precisar ser chamado manualmente:
-            // if(typeof renderizarMenu === 'function') renderizarMenu(); 
-            
-            if (idLoja) carregarDados(); 
         };
+
+        window.salvar = (colecao, id, dados) => {
+            firebase.firestore().collection(colecao).doc(id).update(dados).then(() => alert("Atualizado!"));
+        };
+
+        window.deletar = (colecao, id) => {
+            if(confirm("Confirmar exclusão?")) firebase.firestore().collection(colecao).doc(id).delete();
+        };
+
+        // Autenticação garantindo carregamento
+        firebase.auth().onAuthStateChanged(user => {
+            if (user) {
+                const db = firebase.firestore();
+                const idLoja = user.uid;
+
+                // Carregar lista
+                db.collection("config_profissionais").where("estabelecimentoId", "==", idLoja).onSnapshot(snap => {
+                    const container = document.getElementById("listaProfissionais");
+                    container.innerHTML = "";
+                    snap.forEach(doc => {
+                        cacheDados[doc.id] = doc.data();
+                        container.innerHTML += `<div class="item-lista" id="${doc.id}">👤 ${doc.data().nome} <div><button class="btn-edit" onclick="editar('${doc.id}', 'config_profissionais')">✏️</button><button class="btn-del" onclick="deletar('config_profissionais', '${doc.id}')">X</button></div></div>`;
+                    });
+                });
+
+                db.collection("servicos").where("estabelecimentoId", "==", idLoja).onSnapshot(snap => {
+                    const container = document.getElementById("listaServicos");
+                    container.innerHTML = "";
+                    snap.forEach(doc => {
+                        const s = doc.data();
+                        cacheDados[doc.id] = s;
+                        container.innerHTML += `<div class="item-lista" id="${doc.id}">✂️ ${s.nome} - R$ ${s.preco} (${s.duracaoMinutos}min) <div><button class="btn-edit" onclick="editar('${doc.id}', 'servicos')">✏️</button><button class="btn-del" onclick="deletar('servicos', '${doc.id}')">X</button></div></div>`;
+                    });
+                });
+
+                // Cadastro
+                document.getElementById("formNovoProfissional").onsubmit = (e) => {
+                    e.preventDefault();
+                    db.collection("config_profissionais").add({ nome: document.getElementById("barbeiroNome").value, estabelecimentoId: idLoja });
+                    document.getElementById("barbeiroNome").value = "";
+                };
+
+                document.getElementById("formNovoServico").onsubmit = (e) => {
+                    e.preventDefault();
+                    db.collection("servicos").add({ 
+                        nome: document.getElementById("servicoNome").value, 
+                        preco: parseFloat(document.getElementById("servicoPreco").value),
+                        duracaoMinutos: parseInt(document.getElementById("servicoTempo").value),
+                        estabelecimentoId: idLoja 
+                    });
+                    document.getElementById("formNovoServico").reset();
+                };
+            }
+        });
     </script>
 </body>
 </html>
