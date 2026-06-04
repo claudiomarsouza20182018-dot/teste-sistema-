@@ -4,7 +4,6 @@ window.loginComGoogle = function() {
     firebase.auth().signInWithPopup(provider)
         .then((result) => {
             console.log("Login realizado com sucesso!");
-            // Redirecionamento forçado após sucesso no login
             window.location.href = "painel-geral.html"; 
         })
         .catch((error) => {
@@ -19,7 +18,6 @@ function monitorarAutenticacao() {
         console.log("Estado de autenticação mudou:", user ? "Logado" : "Deslogado");
         
         const path = window.location.pathname;
-        // Verifica se está no index ou na raiz
         const estaNaPaginaLogin = path.includes("index.html") || path === "/" || path === "";
 
         if (user) {
@@ -28,7 +26,6 @@ function monitorarAutenticacao() {
         } else {
             console.log("Nenhum usuário logado.");
             localStorage.removeItem("idLojaAtual");
-            // Se não estiver na página de login e não houver usuário, volta para o index
             if (!estaNaPaginaLogin) {
                 window.location.href = "index.html";
             }
@@ -36,16 +33,17 @@ function monitorarAutenticacao() {
     });
 }
 
-// --- FUNÇÃO DE SINCRONIZAÇÃO (AJUSTADA PARA UID) ---
+// --- FUNÇÃO DE SINCRONIZAÇÃO (RASTREADA) ---
 async function sincronizarUsuarioEloja(user, estaNaPaginaLogin) {
     const db = firebase.firestore();
     const usuarioRef = db.collection("usuarios").doc(user.uid);
 
     try {
         console.log("Tentando acessar dados no Firestore...");
-        const doc = await usuarioRef.get();
         
-        // FORÇAMOS o uso do user.uid como ID da loja, garantindo independência total.
+        const doc = await usuarioRef.get();
+        console.log("Acesso ao Firestore concluído com sucesso!"); 
+        
         let idLoja = user.uid;
 
         if (!doc.exists) {
@@ -53,28 +51,26 @@ async function sincronizarUsuarioEloja(user, estaNaPaginaLogin) {
             await usuarioRef.set({
                 nome: user.displayName || "Usuário",
                 email: user.email,
-                estabelecimentoId: idLoja, // O ID do documento é o próprio estabelecimentoId
+                estabelecimentoId: idLoja,
                 criadoEm: firebase.firestore.FieldValue.serverTimestamp()
             });
+            console.log("Registro criado no Firestore!"); 
         } else {
-            // Ignoramos qualquer valor antigo salvo no banco e usamos o UID atual do Firebase.
+            console.log("Usuário já existe no banco.");
             idLoja = user.uid;
         }
 
-        // Define no localStorage o ID técnico (UID)
         localStorage.setItem("idLojaAtual", idLoja);
         console.log("ID da Loja definido (UID):", idLoja);
 
-        // Se estiver na tela de login e já estiver logado, redireciona
         if (estaNaPaginaLogin) {
             console.log("Redirecionando para painel-geral.html");
             window.location.href = "painel-geral.html";
         }
     } catch (error) {
-        console.error("Erro CRÍTICO na sincronização:", error);
-        alert("Erro de permissão no Firestore. Verifique suas regras no Firebase Console.");
+        console.error("ERRO DETALHADO NO FIREBASE:", error.code, error.message);
+        alert("Erro no Firestore: " + error.message);
     }
 }
 
-// Inicializa o monitoramento assim que o arquivo carregar
 monitorarAutenticacao();
