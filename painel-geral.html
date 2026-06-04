@@ -134,8 +134,24 @@
                             <span>${d.horario} - ${d.servico} | ${d.status}</span>
                         </div>
                         <div>
-                            <button class="btn-acao btn-atendido" onclick="atualizarStatus('${doc.id}', 'Atendido')">✔</button>
-                            <button class="btn-acao btn-cancelar" onclick="atualizarStatus('${doc.id}', 'Cancelado')">✖</button>
+        
+    <button
+        class="btn-acao"
+        style="background:#25D366;color:white;"
+        onclick="enviarLembrete('${d.whatsapp}','${d.cliente}','${d.horario}','${d.servico}')">
+        🔔
+    </button>
+
+    <button class="btn-acao btn-atendido"
+        onclick="atualizarStatus('${doc.id}', 'Atendido')">
+        ✔
+    </button>
+
+    <button class="btn-acao btn-cancelar"
+        onclick="atualizarStatus('${doc.id}', 'Cancelado')">
+        ✖
+    </button>
+
                         </div>`;
                     container.appendChild(card);
                 });
@@ -157,6 +173,7 @@
             container.innerHTML = "";
             let temp = new Date(dataBase);
             temp.setDate(temp.getDate() - (temp.getDay() === 0 ? 6 : temp.getDay() - 1));
+
             document.getElementById('mesAnoDisplay').innerText = temp.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
             for (let i = 0; i < 7; i++) {
                 let dia = new Date(temp); dia.setDate(temp.getDate() + i);
@@ -179,6 +196,34 @@
         }
 
         function renderizarAgendaAtual() { carregarAgendaDia(dataSelecionada, obterIdComercio()); }
+        function enviarLembrete(whatsapp, cliente, horario, servico) {
+
+    if (!whatsapp) {
+        alert("Cliente sem WhatsApp cadastrado.");
+        return;
+    }
+
+    const mensagem =
+`Olá ${cliente}! 
+
+Passando para lembrar do seu agendamento.
+
+ Horário: ${horario}
+ Serviço: ${servico}
+
+Aguardamos você!`;
+
+    let numero = whatsapp.replace(/\D/g, '');
+
+    if (!numero.startsWith('55')) {
+        numero = '55' + numero;
+    }
+
+    const url =
+        `https://wa.me/${numero}?text=${encodeURIComponent(mensagem)}`;
+
+    window.open(url, '_blank');
+}
         function atualizarStatus(id, novoStatus) { firebase.firestore().collection("agenda_clientes").doc(id).update({ status: novoStatus }).then(() => renderizarAgendaAtual()); }
         function mudarSemana(offset) { dataBase.setDate(dataBase.getDate() + (offset * 7)); renderizarCarrossel(); }
     </script>
