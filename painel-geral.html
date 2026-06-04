@@ -73,20 +73,22 @@
             }
         });
 
-        // Função ajustada para incluir o caminho da pasta /teste-sistema-/
+        // Função corrigida para usar o UID (ID do Documento) real do Firebase
         function copiarLink() {
             const user = firebase.auth().currentUser;
+            
             if (!user) {
                 alert("Erro: Você não está logado.");
                 return;
             }
             
+            // Pega o UID (código estranho único) direto do Firebase Auth
             const idLoja = user.uid; 
-            // Adicionado o /teste-sistema-/ antes do agendar.html
-            const link = `${window.location.origin}/teste-sistema-/agendar.html?id=${idLoja}`;
+            
+            const link = `${window.location.origin}/agendar.html?id=${idLoja}`;
             
             navigator.clipboard.writeText(link).then(() => {
-                alert("Link com caminho da pasta copiado!");
+                alert("Link com seu ID único copiado com sucesso!");
             }).catch(err => {
                 prompt("Copie o seu link abaixo:", link);
             });
