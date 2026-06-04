@@ -73,25 +73,14 @@
             }
         });
 
-        // Função corrigida para usar o UID (ID do Documento) real do Firebase
         function copiarLink() {
             const user = firebase.auth().currentUser;
-            
-            if (!user) {
-                alert("Erro: Você não está logado.");
-                return;
-            }
-            
-            // Pega o UID (código estranho único) direto do Firebase Auth
+            if (!user) { alert("Erro: Você não está logado."); return; }
             const idLoja = user.uid; 
-            
             const link = `${window.location.origin}/teste-sistema-/agendar.html?id=${idLoja}`;
-            
             navigator.clipboard.writeText(link).then(() => {
                 alert("Link com seu ID único copiado com sucesso!");
-            }).catch(err => {
-                prompt("Copie o seu link abaixo:", link);
-            });
+            }).catch(err => { prompt("Copie o seu link abaixo:", link); });
         }
 
         function renderizarLinhasDeFundo() {
@@ -127,36 +116,42 @@
 
                     const card = document.createElement('div');
                     card.className = 'card-agendamento';
+                    card.setAttribute('data-id', doc.id);
                     card.style.top = topPos + 'px';
                     card.innerHTML = `
                         <div class="info-agendamento">
                             <strong>${d.cliente}</strong><br>
-                            <span>${d.horario} - ${d.servico} | ${d.status}</span>
+                            <span class="status-info">${d.horario} - ${d.servico} | ${d.status}</span>
                         </div>
                         <div>
-        
-    <button
-        class="btn-acao"
-        style="background:#25D366;color:white;"
-        onclick="enviarLembrete('${d.whatsapp}','${d.cliente}','${d.horario}','${d.servico}')">
-        🔔
-    </button>
-
-    <button class="btn-acao btn-atendido"
-        onclick="atualizarStatus('${doc.id}', 'Atendido')">
-        ✔
-    </button>
-
-    <button class="btn-acao btn-cancelar"
-        onclick="atualizarStatus('${doc.id}', 'Cancelado')">
-        ✖
-    </button>
-
+                            <button class="btn-acao" style="background:#25D366;color:white;" onclick="enviarLembrete('${d.whatsapp}','${d.cliente}','${d.horario}','${d.servico}')">🔔</button>
+                            <button class="btn-acao btn-atendido" onclick="atualizarStatus('${doc.id}', 'Atendido')">✔</button>
+                            <button class="btn-acao btn-cancelar" onclick="atualizarStatus('${doc.id}', 'Cancelado')">✖</button>
                         </div>`;
                     container.appendChild(card);
                 });
             } catch (err) {
                 console.error("Erro ao carregar agenda:", err);
+            }
+        }
+
+        async function atualizarStatus(id, novoStatus) {
+            const card = document.querySelector(`[data-id="${id}"]`);
+            if (card) card.style.opacity = "0.5";
+
+            try {
+                await firebase.firestore().collection("agenda_clientes").doc(id).update({ status: novoStatus });
+                
+                if (card) {
+                    const span = card.querySelector('.status-info');
+                    const partes = span.innerText.split('|');
+                    span.innerText = `${partes[0].trim()} | ${novoStatus}`;
+                    card.style.opacity = "1";
+                }
+            } catch (err) {
+                console.error("Erro ao atualizar:", err);
+                if (card) card.style.opacity = "1";
+                alert("Erro ao atualizar status.");
             }
         }
 
@@ -173,7 +168,6 @@
             container.innerHTML = "";
             let temp = new Date(dataBase);
             temp.setDate(temp.getDate() - (temp.getDay() === 0 ? 6 : temp.getDay() - 1));
-
             document.getElementById('mesAnoDisplay').innerText = temp.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
             for (let i = 0; i < 7; i++) {
                 let dia = new Date(temp); dia.setDate(temp.getDate() + i);
@@ -196,35 +190,15 @@
         }
 
         function renderizarAgendaAtual() { carregarAgendaDia(dataSelecionada, obterIdComercio()); }
+
         function enviarLembrete(whatsapp, cliente, horario, servico) {
+            if (!whatsapp) { alert("Cliente sem WhatsApp cadastrado."); return; }
+            const mensagem = `Olá ${cliente}! \n\nPassando para lembrar do seu agendamento.\n\n Horário: ${horario}\n Servico: ${servico}\n\nAguardamos você!`;
+            let numero = whatsapp.replace(/\D/g, '');
+            if (!numero.startsWith('55')) { numero = '55' + numero; }
+            window.open(`https://wa.me/${numero}?text=${encodeURIComponent(mensagem)}`, '_blank');
+        }
 
-    if (!whatsapp) {
-        alert("Cliente sem WhatsApp cadastrado.");
-        return;
-    }
-
-    const mensagem =
-`Olá ${cliente}! 
-
-Passando para lembrar do seu agendamento.
-
- Horário: ${horario}
- Serviço: ${servico}
-
-Aguardamos você!`;
-
-    let numero = whatsapp.replace(/\D/g, '');
-
-    if (!numero.startsWith('55')) {
-        numero = '55' + numero;
-    }
-
-    const url =
-        `https://wa.me/${numero}?text=${encodeURIComponent(mensagem)}`;
-
-    window.open(url, '_blank');
-}
-        function atualizarStatus(id, novoStatus) { firebase.firestore().collection("agenda_clientes").doc(id).update({ status: novoStatus }).then(() => renderizarAgendaAtual()); }
         function mudarSemana(offset) { dataBase.setDate(dataBase.getDate() + (offset * 7)); renderizarCarrossel(); }
     </script>
 </body>
