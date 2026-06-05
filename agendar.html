@@ -25,7 +25,6 @@
 <body>
 
 <div class="container-agendamento">
-    <!-- Texto fixo conforme solicitado -->
     <h2 id="nomeEstabelecimento">Agendar</h2>
     
     <form id="formAgendamento">
@@ -65,13 +64,11 @@
     const db = window.db; 
     let horarioSelecionadoGlobal = null;
 
-    // Carregar Profissionais
     db.collection("config_profissionais").where("estabelecimentoId", "==", idLoja).get().then(snap => {
         const select = document.getElementById("profissionalSelecionado");
         snap.forEach(doc => { select.innerHTML += `<option value="${doc.data().nome}">${doc.data().nome}</option>`; });
     });
 
-    // Carregar Serviços
     db.collection("servicos").where("estabelecimentoId", "==", idLoja).get().then(snap => {
         const select = document.getElementById("servicoSelecionado");
         snap.forEach(doc => {
@@ -93,24 +90,20 @@
 
         const dataFormatada = data.split("-").reverse().join("/");
         const snap = await db.collection("agenda_clientes").where("estabelecimentoId", "==", idLoja).get();
-        const servicosSnap = await db.collection("servicos").where("estabelecimentoId", "==", idLoja).get();
         
-        const mapaDuracao = {};
-        servicosSnap.forEach(doc => mapaDuracao[doc.data().nome] = parseInt(doc.data().duracaoMinutos) || 30);
-
         let intervalosOcupados = [];
         snap.forEach(doc => {
             const d = doc.data();
             if(d.profissional === prof && d.dataFormatada === dataFormatada) {
                 const [h, m] = d.horario.split(':').map(Number);
                 const inicio = h * 60 + m;
-                const fim = inicio + (mapaDuracao[d.servico] || 30);
+                // Usa o campo salvo no banco para checar ocupação
+                const fim = inicio + (parseInt(d.duracaoMinutos) || 30);
                 intervalosOcupados.push({ inicio, fim });
             }
         });
 
         container.innerHTML = "";
-
         for (let min = (9 * 60); min < (19 * 60); min += 5) { 
             let fimTentativo = min + duracao;
             let ocupado = intervalosOcupados.some(i => (min < i.fim && fimTentativo > i.inicio));
@@ -139,12 +132,17 @@
         e.preventDefault();
         if (!horarioSelecionadoGlobal) return alert("Escolha um horário!");
         
+        // Pega a duração correta para salvar no banco
+        const selectServico = document.getElementById("servicoSelecionado");
+        const duracaoServico = parseInt(selectServico.selectedOptions[0].getAttribute("data-tempo") || 30);
+        
         db.collection("agenda_clientes").add({
             estabelecimentoId: idLoja,
             cliente: document.getElementById("nomeCliente").value,
             whatsapp: document.getElementById("whatsappCliente").value,
             profissional: document.getElementById("profissionalSelecionado").value,
             servico: document.getElementById("servicoSelecionado").value,
+            duracaoMinutos: duracaoServico, // <--- AQUI ESTAVA A FALHA! AGORA ESTÁ SENDO SALVO.
             horario: horarioSelecionadoGlobal,
             dataFormatada: document.getElementById("dataAgendamento").value.split("-").reverse().join("/"),
             status: "Aguardando"
@@ -153,7 +151,7 @@
             location.reload(); 
         }).catch(err => {
             console.error(err);
-            alert("Erro ao agendar. Verifique as permissões do banco.");
+            alert("Erro ao agendar.");
         });
     };
 </script>
