@@ -15,23 +15,56 @@
         .header-top { display: flex; gap: 10px; margin-bottom: 15px; }
         #seletorProfissional { background: #202024; color: #ff9000; border: 1px solid #ff9000; padding: 10px; border-radius: 8px; font-weight: bold; width: 60%; }
         .btn-link { background:#ff9100; color:#121214; border:none; padding:10px; width: 40%; border-radius:8px; cursor:pointer; font-weight:bold; }
+        .container-resumo { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 20px 0; background: #202024; padding: 15px; border-radius: 12px; border: 1px solid #323238; }
+        .item-resumo { text-align: center; }
+        .item-resumo div:first-child { font-size: 1.2em; font-weight: bold; color: #fff; }
+        .item-resumo div:last-child { font-size: 0.8em; color: #888; margin-top: 5px; }
         .carrossel-dias { display: flex; gap: 8px; overflow-x: auto; padding: 5px 0; margin-bottom: 15px; }
         .card-dia { background: #202024; padding: 10px; border-radius: 8px; min-width: 50px; text-align: center; border: 1px solid #323238; cursor: pointer; }
         .card-dia.active { border-color: #ff9000; background: #ff9000; color: #121214; }
         #listaAgendamentos { position: relative; height: 1300px; border-top: 1px solid #323238; margin-top: 20px; }
         .linha-hora { position: absolute; width: 100%; border-bottom: 1px solid #323238; height: 100px; }
         .label-hora { color: #666; font-size: 12px; font-weight: bold; padding: 5px; }
-        .card-agendamento { position: absolute; left: 60px; right: 10px; background: #202024; border-left: 4px solid #ff9000; padding: 10px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; z-index: 2; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
-        .btn-acao { border: none; padding: 6px; border-radius: 4px; cursor: pointer; font-size: 10px; font-weight: bold; margin: 2px; }
+        
+        /* CARD OTIMIZADO PARA SERVIÇOS CURTOS */
+        .card-agendamento { 
+            position: absolute; 
+            left: 60px; 
+            right: 10px; 
+            background: #202024; 
+            border-left: 3px solid #ff9000; 
+            padding: 0 4px; 
+            border-radius: 2px; 
+            display: flex; 
+            flex-direction: row; 
+            align-items: center; 
+            justify-content: space-between;
+            z-index: 2; 
+            box-shadow: 0 1px 2px rgba(0,0,0,0.4); 
+            font-size: 8px; 
+            overflow: hidden;
+            min-height: 8px; /* Permite cards de 5min sem sobreposição */
+        }
+        
+        .info-agendamento {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            flex-grow: 1;
+            margin-right: 4px;
+        }
+
+        .botoes-container { display: flex; gap: 1px; }
+        .btn-acao { border: none; padding: 1px 3px; border-radius: 2px; cursor: pointer; font-size: 7px; font-weight: bold; }
         .btn-atendido { background: #28a745; color: white; }
         .btn-cancelar { background: #dc3545; color: white; }
+        .btn-alerta { background: #f1c40f; color: black; }
         .btn-nav { background: #29292e; color: #ff9100; border: 1px solid #ff8800; padding: 10px 20px; cursor: pointer; border-radius: 8px; font-weight: bold; }
     </style>
 </head>
 <body>
 
     <div id="menu-container"></div>
-
     <div class="main-content">
         <div class="content-wrapper">
             <div class="header-top">
@@ -40,13 +73,17 @@
                 </select>
                 <button class="btn-link" onclick="copiarLink()">Copiar Link 📋</button>
             </div>
-
-            <div class="seletor-semana" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px;">
+            <div class="container-resumo">
+                <div class="item-resumo"><div id="count-total">0</div><div>Total</div></div>
+                <div class="item-resumo"><div id="count-atendidos" style="color:#28a745">0</div><div>Atendidos</div></div>
+                <div class="item-resumo"><div id="count-pendentes" style="color:#ff9000">0</div><div>Pendentes</div></div>
+                <div class="item-resumo"><div id="count-cancelados" style="color:#dc3545">0</div><div>Cancelados</div></div>
+            </div>
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px;">
                 <button class="btn-nav" onclick="mudarSemana(-1)">◀</button>
                 <span id="mesAnoDisplay" style="font-weight:bold; font-size: 16px;">---</span>
                 <button class="btn-nav" onclick="mudarSemana(1)">▶</button>
             </div>
-
             <div class="carrossel-dias" id="carrosselDatas"></div>
             <div id="listaAgendamentos"></div>
         </div>
@@ -55,10 +92,10 @@
     <script src="firebase-init.js"></script>
     <script src="config-global.js"></script>
     <script src="auth-controle.js"></script>
-    <script src="menu.js"></script> 
+    <script src="menu.js"></script>
     
     <script>
-        let dataBase = new Date(); 
+        let dataBase = new Date();
         let dataSelecionada = new Date();
         const PIXELS_POR_HORA = 100;
 
@@ -68,19 +105,57 @@
                 carregarProfissionais(idLoja);
                 renderizarCarrossel();
                 setTimeout(() => selecionarDiaHoje(), 500);
-            } else {
-                window.location.href = "index.html";
             }
         });
 
-        function copiarLink() {
-            const user = firebase.auth().currentUser;
-            if (!user) { alert("Erro: Você não está logado."); return; }
-            const idLoja = user.uid; 
-            const link = `${window.location.origin}/teste-sistema-/agendar.html?id=${idLoja}`;
-            navigator.clipboard.writeText(link).then(() => {
-                alert("Link com seu ID único copiado com sucesso!");
-            }).catch(err => { prompt("Copie o seu link abaixo:", link); });
+        async function carregarAgendaDia(dataObj, idLoja) {
+            if (!idLoja) return;
+            renderizarLinhasDeFundo();
+            const container = document.getElementById("listaAgendamentos");
+            const dataFormatada = dataObj.toLocaleDateString('pt-BR');
+            const prof = document.getElementById("seletorProfissional").value;
+            
+            const snap = await firebase.firestore().collection("agenda_clientes")
+                .where("estabelecimentoId", "==", idLoja)
+                .where("dataFormatada", "==", dataFormatada).get();
+
+            snap.forEach(doc => {
+                const d = doc.data();
+                if (prof !== "todos" && d.profissional !== prof) return;
+
+                const [h, m] = d.horario.split(':').map(Number);
+                const topPos = ((h - 8) * PIXELS_POR_HORA) + ((m / 60) * PIXELS_POR_HORA);
+                
+                const duracao = parseInt(d.duracaoMinutos) || 30; 
+                const alturaProporcional = (duracao / 60) * PIXELS_POR_HORA;
+                // Mínimo 8px garante que serviços de 5min não sobreponham outros
+                const alturaFinal = Math.max(alturaProporcional, 8); 
+
+                const card = document.createElement('div');
+                card.className = 'card-agendamento';
+                card.style.top = topPos + 'px';
+                card.style.height = alturaFinal + 'px';
+
+                card.innerHTML = `
+                    <div class="info-agendamento"><strong>${d.cliente}</strong> | ${d.servico}</div>
+                    <div class="botoes-container">
+                        <button class="btn-acao btn-alerta" onclick="alert('Notificar: ${d.cliente}')">🔔</button>
+                        <button class="btn-acao btn-atendido" onclick="atualizarStatus('${doc.id}', 'Atendido')">✔</button>
+                        <button class="btn-acao btn-cancelar" onclick="atualizarStatus('${doc.id}', 'Cancelado')">✖</button>
+                    </div>`;
+                container.appendChild(card);
+            });
+            recalcularResumo();
+        }
+
+        async function atualizarStatus(id, novoStatus) {
+            await firebase.firestore().collection("agenda_clientes").doc(id).update({ status: novoStatus });
+            carregarAgendaDia(dataSelecionada, obterIdComercio());
+        }
+
+        function recalcularResumo() {
+            const cards = document.querySelectorAll('.card-agendamento');
+            document.getElementById('count-total').innerText = cards.length;
         }
 
         function renderizarLinhasDeFundo() {
@@ -93,74 +168,6 @@
                 divHora.innerHTML = `<div class="label-hora">${h.toString().padStart(2, '0')}:00</div>`;
                 container.appendChild(divHora);
             }
-        }
-
-        async function carregarAgendaDia(dataObj, idLoja) {
-            if (!idLoja) return;
-            renderizarLinhasDeFundo();
-            const dataFormatada = dataObj.toLocaleDateString('pt-BR');
-            const prof = document.getElementById("seletorProfissional").value;
-            const container = document.getElementById("listaAgendamentos");
-            
-            try {
-                const snap = await firebase.firestore().collection("agenda_clientes")
-                    .where("estabelecimentoId", "==", idLoja)
-                    .where("dataFormatada", "==", dataFormatada).get();
-
-                snap.forEach(doc => {
-                    const d = doc.data();
-                    if (prof !== "todos" && d.profissional !== prof) return;
-                    
-                    const [h, m] = d.horario.split(':').map(Number);
-                    const topPos = ((h - 8) * 60 + m) * (PIXELS_POR_HORA / 60);
-
-                    const card = document.createElement('div');
-                    card.className = 'card-agendamento';
-                    card.setAttribute('data-id', doc.id);
-                    card.style.top = topPos + 'px';
-                    card.innerHTML = `
-                        <div class="info-agendamento">
-                            <strong>${d.cliente}</strong><br>
-                            <span class="status-info">${d.horario} - ${d.servico} | ${d.status}</span>
-                        </div>
-                        <div>
-                            <button class="btn-acao" style="background:#25D366;color:white;" onclick="enviarLembrete('${d.whatsapp}','${d.cliente}','${d.horario}','${d.servico}')">🔔</button>
-                            <button class="btn-acao btn-atendido" onclick="atualizarStatus('${doc.id}', 'Atendido')">✔</button>
-                            <button class="btn-acao btn-cancelar" onclick="atualizarStatus('${doc.id}', 'Cancelado')">✖</button>
-                        </div>`;
-                    container.appendChild(card);
-                });
-            } catch (err) {
-                console.error("Erro ao carregar agenda:", err);
-            }
-        }
-
-        async function atualizarStatus(id, novoStatus) {
-            const card = document.querySelector(`[data-id="${id}"]`);
-            if (card) card.style.opacity = "0.5";
-
-            try {
-                await firebase.firestore().collection("agenda_clientes").doc(id).update({ status: novoStatus });
-                
-                if (card) {
-                    const span = card.querySelector('.status-info');
-                    const partes = span.innerText.split('|');
-                    span.innerText = `${partes[0].trim()} | ${novoStatus}`;
-                    card.style.opacity = "1";
-                }
-            } catch (err) {
-                console.error("Erro ao atualizar:", err);
-                if (card) card.style.opacity = "1";
-                alert("Erro ao atualizar status.");
-            }
-        }
-
-        function carregarProfissionais(idLoja) {
-            const select = document.getElementById("seletorProfissional");
-            firebase.firestore().collection("config_profissionais").where("estabelecimentoId", "==", idLoja).onSnapshot(snap => {
-                select.innerHTML = '<option value="todos">Todos</option>';
-                snap.forEach(doc => { select.innerHTML += `<option value="${doc.data().nome}">${doc.data().nome}</option>`; });
-            });
         }
 
         function renderizarCarrossel() {
@@ -184,21 +191,26 @@
             }
         }
 
+        function carregarProfissionais(idLoja) {
+            firebase.firestore().collection("config_profissionais").where("estabelecimentoId", "==", idLoja).onSnapshot(snap => {
+                const select = document.getElementById("seletorProfissional");
+                select.innerHTML = '<option value="todos">Todos</option>';
+                snap.forEach(doc => { select.innerHTML += `<option value="${doc.data().nome}">${doc.data().nome}</option>`; });
+            });
+        }
+
+        function copiarLink() {
+            const user = firebase.auth().currentUser;
+            const link = `${window.location.origin}/agendar.html?id=${user.uid}`;
+            navigator.clipboard.writeText(link).then(() => alert("Link copiado!"));
+        }
+
         function selecionarDiaHoje() {
             const hoje = new Date().getDate();
             document.querySelectorAll('.card-dia').forEach(card => { if (card.querySelector('strong').innerText == hoje) card.click(); });
         }
 
         function renderizarAgendaAtual() { carregarAgendaDia(dataSelecionada, obterIdComercio()); }
-
-        function enviarLembrete(whatsapp, cliente, horario, servico) {
-            if (!whatsapp) { alert("Cliente sem WhatsApp cadastrado."); return; }
-            const mensagem = `Olá ${cliente}! \n\nPassando para lembrar do seu agendamento.\n\n Horário: ${horario}\n Servico: ${servico}\n\nAguardamos você!`;
-            let numero = whatsapp.replace(/\D/g, '');
-            if (!numero.startsWith('55')) { numero = '55' + numero; }
-            window.open(`https://wa.me/${numero}?text=${encodeURIComponent(mensagem)}`, '_blank');
-        }
-
         function mudarSemana(offset) { dataBase.setDate(dataBase.getDate() + (offset * 7)); renderizarCarrossel(); }
     </script>
 </body>
